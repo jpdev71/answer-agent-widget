@@ -103,7 +103,6 @@ const providers = {
 const launcher = document.querySelector("#widget-launcher");
 const widget = document.querySelector("#answer-agent-widget");
 const closeButton = document.querySelector("#widget-close");
-const providerSelect = document.querySelector("#provider-select");
 const messageList = document.querySelector("#message-list");
 const composer = document.querySelector("#composer");
 const messageInput = document.querySelector("#message-input");
@@ -124,12 +123,6 @@ jumpToWidgetButton.addEventListener("click", () => {
   widget.classList.remove("is-hidden");
   launcher.setAttribute("aria-expanded", "true");
   messageInput.focus();
-});
-
-providerSelect.addEventListener("change", (event) => {
-  state.provider = event.target.value;
-  setStatus(`Provider changed to ${providers[state.provider].label}.`);
-  addAgentMessage(`Switched to ${providers[state.provider].label}.`);
 });
 
 modeChatButton.addEventListener("click", () => setMode("chat"));

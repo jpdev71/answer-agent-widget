@@ -118,16 +118,6 @@
             Voice
           </button>
         </div>
-
-        <div class="provider-row">
-          <label class="field-label" for="provider-select">Provider</label>
-          <select id="provider-select" class="provider-select">
-            <option value="demo">Demo simulator</option>
-            <option value="elevenlabs">ElevenLabs</option>
-            <option value="retell">Retell</option>
-            <option value="heygen">HeyGen planning</option>
-          </select>
-        </div>
       </section>
 
       <section id="voice-panel" class="voice-panel is-hidden" aria-live="polite">
@@ -142,15 +132,7 @@
         </button>
       </section>
 
-      <section id="message-list" class="message-list" aria-live="polite">
-        <article class="message message-agent">
-          <p>
-            Hi, I’m a demo intake assistant for a Georgia personal injury firm.
-            I can answer common questions, explain what the firm handles, and
-            help guide visitors toward a consultation.
-          </p>
-        </article>
-      </section>
+      <section id="message-list" class="message-list" aria-live="polite"></section>
 
       <form id="composer" class="composer">
         <label class="field-label" for="message-input">Message</label>

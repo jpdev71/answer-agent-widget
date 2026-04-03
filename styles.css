@@ -200,8 +200,8 @@ h1 {
   left: 24px;
   bottom: 88px;
   z-index: 19;
-  width: min(420px, calc(100vw - 32px));
-  max-height: min(760px, calc(100vh - 120px));
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(680px, calc(100vh - 120px));
   display: grid;
   grid-template-rows: auto auto auto auto 1fr auto auto;
   border-radius: 30px;
@@ -278,16 +278,11 @@ h1 {
   box-shadow: 0 8px 20px rgba(18, 60, 99, 0.08);
 }
 
-.provider-select,
 .message-input {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
-}
-
-.provider-select {
-  padding: 12px 14px;
 }
 
 .voice-title {
@@ -322,6 +317,7 @@ h1 {
   flex-direction: column;
   gap: 12px;
   overflow: auto;
+  min-height: 120px;
 }
 
 .message {
@@ -439,5 +435,10 @@ h1 {
     left: 16px;
     bottom: 80px;
     width: calc(100vw - 32px);
+    max-height: min(560px, calc(100vh - 96px));
+  }
+
+  .message-input {
+    min-height: 76px;
   }
 }
