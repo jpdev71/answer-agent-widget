@@ -1,56 +1,45 @@
-# Answer Agent Widget Prototype
+# Law Firm Answer Agent Demo
 
-Static prototype for a lower-left website widget that combines text chat today with a path toward voice and avatar integrations later.
+Static Vercel-ready prototype for a lower-left website widget that acts like a personal injury law-firm answer agent.
 
-## What is included
+## Current direction
 
-- A polished lower-left floating widget
-- Text chat UI with demo replies
-- Browser speech recognition fallback for voice input where supported
+- Chat-forward experience
+- Separate voice mode
+- ElevenLabs as the intended first live integration
+- Expanded panel layout that leaves room for richer multimodal states later
+- Demo content shaped around a Georgia personal injury firm
+
+## Included in this prototype
+
+- Floating lower-left widget
+- Chat and voice mode toggle
+- Quick prompt chips for common intake questions
+- Demo answer logic for consultations, practice areas, claim timing, and next steps
 - Provider stubs for `demo`, `ElevenLabs`, `Retell`, and `HeyGen`
-- Static hosting support for Vercel
+- Static hosting config for Vercel
 
-## Project structure
+## Files
 
-- `index.html` - landing page plus widget markup
-- `styles.css` - site and widget styling
-- `app.js` - widget behavior, provider abstraction, and browser voice handling
-- `vercel.json` - lightweight Vercel config
+- `index.html` - page shell and widget markup
+- `styles.css` - layout, branding, and responsive styling
+- `app.js` - widget logic, knowledge responses, and browser voice placeholder
+- `vercel.json` - simple Vercel config
 
-## How to test right now
+## Deploy
 
-Because this project is static, it can be served by any local file server or deployed directly to Vercel.
+This project can be imported into Vercel as a static site with no build step.
 
-### Option 1: drag-and-drop deploy to Vercel
+## Next recommended step
 
-1. In the Vercel dashboard, create a new project.
-2. Choose the option to upload or import local files if available in your dashboard flow.
-3. Point Vercel at this folder.
-4. Deploy.
+Add a tiny server layer before connecting real APIs so the widget can keep secrets off the client. The first integration path should be ElevenLabs.
 
-### Option 2: GitHub + Vercel
+Suggested next build phase:
 
-1. Create a new GitHub repository.
-2. Push this folder to GitHub once `git` is installed on your machine.
-3. In Vercel, import the GitHub repo.
-4. Deploy with the default settings.
+1. Add a server endpoint for protected provider requests.
+2. Replace the ElevenLabs placeholder with a real text or voice session flow.
+3. Tune answers and intake prompts around the firm's actual consultation process.
 
-## Recommended next build step
+## Demo content note
 
-The current widget is intentionally front-end only. For real provider integrations, add a thin server layer for:
-
-- API key protection
-- signed session creation
-- request forwarding
-- transcripts or analytics
-
-At that point we can choose one of two directions:
-
-1. Keep this as a static widget plus serverless functions.
-2. Move to a framework app such as Next.js once Node is installed locally.
-
-## Provider notes
-
-- `ElevenLabs`: strongest candidate for the first real text + voice integration
-- `Retell`: strong if voice becomes the primary product experience
-- `HeyGen`: likely a phase-two avatar layer rather than the first integration
+The current content is a product demo inspired by a Georgia personal injury firm website, not legal advice and not a production knowledge system.

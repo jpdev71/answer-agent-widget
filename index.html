@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Answer Agent Widget Prototype</title>
+    <title>Personal Injury Answer Agent Demo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -15,26 +15,63 @@
   <body>
     <main class="page-shell">
       <section class="hero-panel">
-        <p class="eyebrow">Prototype</p>
-        <h1>Website Answer Agent</h1>
-        <p class="hero-copy">
-          A lower-left support widget that can answer by text today and grow into
-          voice or avatar modes as we validate providers.
-        </p>
-        <div class="capability-grid">
-          <article class="capability-card">
-            <h2>Text Chat</h2>
-            <p>Fastest path to a useful embedded assistant with guardrails.</p>
+        <div class="hero-copy-block">
+          <p class="eyebrow">Demo Concept</p>
+          <h1>Law Firm Answer Agent</h1>
+          <p class="hero-copy">
+            A polished, lower-left website widget for a personal injury firm:
+            chat-forward, voice-ready, and designed to guide prospective clients
+            toward a consultation.
+          </p>
+          <div class="hero-actions">
+            <a class="hero-button hero-button-primary" href="#demo-notes">See demo notes</a>
+            <button id="jump-to-widget" class="hero-button hero-button-secondary" type="button">
+              Open widget
+            </button>
+          </div>
+        </div>
+        <div class="hero-stat-grid">
+          <article class="hero-stat">
+            <p class="stat-label">Demo focus</p>
+            <h2>Personal injury intake</h2>
           </article>
-          <article class="capability-card">
-            <h2>Voice Mode</h2>
-            <p>Browser microphone capture with pluggable backends.</p>
+          <article class="hero-stat">
+            <p class="stat-label">Primary mode</p>
+            <h2>Chat first, voice optional</h2>
           </article>
-          <article class="capability-card">
-            <h2>Avatar Layer</h2>
-            <p>Reserved for a future HeyGen-style visual experience.</p>
+          <article class="hero-stat">
+            <p class="stat-label">Integration path</p>
+            <h2>ElevenLabs first</h2>
           </article>
         </div>
+      </section>
+
+      <section class="content-grid">
+        <article class="info-card">
+          <p class="eyebrow">What it should do</p>
+          <h2>Guide, qualify, and hand off</h2>
+          <p>
+            The demo is aimed at common law-firm website questions: practice
+            areas, consultation details, timing, and whether someone should
+            contact the firm after an accident.
+          </p>
+        </article>
+        <article class="info-card">
+          <p class="eyebrow">Voice strategy</p>
+          <h2>Voice is visible, not forced</h2>
+          <p>
+            The widget keeps chat in the primary lane while offering a separate
+            voice mode for visitors who prefer speaking.
+          </p>
+        </article>
+        <article class="info-card" id="demo-notes">
+          <p class="eyebrow">Current prototype</p>
+          <h2>Static demo, ready for Vercel</h2>
+          <p>
+            This version is front-end only. The UI is ready for a real
+            ElevenLabs connection once we add a protected server endpoint.
+          </p>
+        </article>
       </section>
     </main>
 
@@ -46,35 +83,89 @@
       aria-expanded="true"
     >
       <span class="launcher-pulse" aria-hidden="true"></span>
-      <span class="launcher-label">Ask us</span>
+      <span class="launcher-label">Free case review</span>
     </button>
 
     <aside id="answer-agent-widget" class="widget-panel" aria-label="Answer agent">
       <header class="widget-header">
         <div>
-          <p class="widget-kicker">Support</p>
-          <h2>Answer Agent</h2>
+          <p class="widget-kicker">Demo intake assistant</p>
+          <h2>Injury Help Desk</h2>
         </div>
         <button id="widget-close" class="icon-button" type="button" aria-label="Minimize widget">
           -
         </button>
       </header>
 
-      <section class="provider-strip">
-        <label class="field-label" for="provider-select">Provider</label>
-        <select id="provider-select" class="provider-select">
-          <option value="demo">Demo Simulator</option>
-          <option value="elevenlabs">ElevenLabs</option>
-          <option value="retell">Retell</option>
-          <option value="heygen">HeyGen (planning)</option>
-        </select>
+      <section class="widget-meta">
+        <div class="mode-toggle" role="tablist" aria-label="Assistant mode">
+          <button
+            id="mode-chat"
+            class="mode-button is-active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+          >
+            Chat
+          </button>
+          <button
+            id="mode-voice"
+            class="mode-button"
+            type="button"
+            role="tab"
+            aria-selected="false"
+          >
+            Voice
+          </button>
+        </div>
+
+        <div class="provider-row">
+          <label class="field-label" for="provider-select">Provider</label>
+          <select id="provider-select" class="provider-select">
+            <option value="demo">Demo simulator</option>
+            <option value="elevenlabs">ElevenLabs</option>
+            <option value="retell">Retell</option>
+            <option value="heygen">HeyGen planning</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="assistant-overview">
+        <p class="overview-title">What this assistant can help with</p>
+        <div id="prompt-chips" class="prompt-chips">
+          <button class="prompt-chip" type="button" data-prompt="What kinds of cases do you handle?">
+            Practice areas
+          </button>
+          <button class="prompt-chip" type="button" data-prompt="Do you offer a free consultation?">
+            Free consultation
+          </button>
+          <button class="prompt-chip" type="button" data-prompt="How long do I have to file a claim in Georgia?">
+            Georgia deadline
+          </button>
+          <button class="prompt-chip" type="button" data-prompt="What should I do after a car accident?">
+            After an accident
+          </button>
+        </div>
+      </section>
+
+      <section id="voice-panel" class="voice-panel is-hidden" aria-live="polite">
+        <p class="voice-title">Voice mode</p>
+        <p class="voice-copy">
+          Speak your question and the assistant will respond in the conversation
+          thread. This is a browser-based placeholder until we connect
+          ElevenLabs.
+        </p>
+        <button id="voice-toggle" class="secondary-button voice-toggle" type="button">
+          Start Voice
+        </button>
       </section>
 
       <section id="message-list" class="message-list" aria-live="polite">
         <article class="message message-agent">
           <p>
-            Hi there. I can help prototype a text and voice support experience.
-            Ask a question or try voice mode.
+            Hi, I’m a demo intake assistant for a Georgia personal injury firm.
+            I can answer common questions, explain what the firm handles, and
+            help guide visitors toward a consultation.
           </p>
         </article>
       </section>
@@ -85,18 +176,19 @@
           id="message-input"
           class="message-input"
           rows="3"
-          placeholder="Ask about pricing, onboarding, integrations, or support..."
+          placeholder="Ask about car accidents, consultations, filing deadlines, or next steps..."
         ></textarea>
         <div class="composer-actions">
-          <button id="voice-toggle" class="secondary-button" type="button">
-            Start Voice
-          </button>
           <button id="send-button" class="primary-button" type="submit">Send</button>
         </div>
       </form>
 
       <footer class="widget-footer">
-        <p id="status-text">Running in local demo mode.</p>
+        <p id="status-text">Demo mode ready. Chat is primary; voice is optional.</p>
+        <p class="fine-print">
+          Demo only. Not legal advice. A live build should route serious matters
+          to firm staff promptly.
+        </p>
       </footer>
     </aside>
 
