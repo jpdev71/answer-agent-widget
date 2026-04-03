@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Answer Agent Widget Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero-panel">
+        <p class="eyebrow">Prototype</p>
+        <h1>Website Answer Agent</h1>
+        <p class="hero-copy">
+          A lower-left support widget that can answer by text today and grow into
+          voice or avatar modes as we validate providers.
+        </p>
+        <div class="capability-grid">
+          <article class="capability-card">
+            <h2>Text Chat</h2>
+            <p>Fastest path to a useful embedded assistant with guardrails.</p>
+          </article>
+          <article class="capability-card">
+            <h2>Voice Mode</h2>
+            <p>Browser microphone capture with pluggable backends.</p>
+          </article>
+          <article class="capability-card">
+            <h2>Avatar Layer</h2>
+            <p>Reserved for a future HeyGen-style visual experience.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <button
+      id="widget-launcher"
+      class="widget-launcher"
+      type="button"
+      aria-controls="answer-agent-widget"
+      aria-expanded="true"
+    >
+      <span class="launcher-pulse" aria-hidden="true"></span>
+      <span class="launcher-label">Ask us</span>
+    </button>
+
+    <aside id="answer-agent-widget" class="widget-panel" aria-label="Answer agent">
+      <header class="widget-header">
+        <div>
+          <p class="widget-kicker">Support</p>
+          <h2>Answer Agent</h2>
+        </div>
+        <button id="widget-close" class="icon-button" type="button" aria-label="Minimize widget">
+          -
+        </button>
+      </header>
+
+      <section class="provider-strip">
+        <label class="field-label" for="provider-select">Provider</label>
+        <select id="provider-select" class="provider-select">
+          <option value="demo">Demo Simulator</option>
+          <option value="elevenlabs">ElevenLabs</option>
+          <option value="retell">Retell</option>
+          <option value="heygen">HeyGen (planning)</option>
+        </select>
+      </section>
+
+      <section id="message-list" class="message-list" aria-live="polite">
+        <article class="message message-agent">
+          <p>
+            Hi there. I can help prototype a text and voice support experience.
+            Ask a question or try voice mode.
+          </p>
+        </article>
+      </section>
+
+      <form id="composer" class="composer">
+        <label class="field-label" for="message-input">Message</label>
+        <textarea
+          id="message-input"
+          class="message-input"
+          rows="3"
+          placeholder="Ask about pricing, onboarding, integrations, or support..."
+        ></textarea>
+        <div class="composer-actions">
+          <button id="voice-toggle" class="secondary-button" type="button">
+            Start Voice
+          </button>
+          <button id="send-button" class="primary-button" type="submit">Send</button>
+        </div>
+      </form>
+
+      <footer class="widget-footer">
+        <p id="status-text">Running in local demo mode.</p>
+      </footer>
+    </aside>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
