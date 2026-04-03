@@ -113,7 +113,6 @@ const jumpToWidgetButton = document.querySelector("#jump-to-widget");
 const modeChatButton = document.querySelector("#mode-chat");
 const modeVoiceButton = document.querySelector("#mode-voice");
 const voicePanel = document.querySelector("#voice-panel");
-const promptChips = document.querySelector("#prompt-chips");
 
 launcher.addEventListener("click", toggleWidgetVisibility);
 closeButton.addEventListener("click", () => {
@@ -135,17 +134,6 @@ providerSelect.addEventListener("change", (event) => {
 
 modeChatButton.addEventListener("click", () => setMode("chat"));
 modeVoiceButton.addEventListener("click", () => setMode("voice"));
-
-promptChips.addEventListener("click", async (event) => {
-  const button = event.target.closest(".prompt-chip");
-  if (!button) {
-    return;
-  }
-
-  const prompt = button.dataset.prompt;
-  messageInput.value = prompt;
-  await submitCurrentMessage();
-});
 
 composer.addEventListener("submit", async (event) => {
   event.preventDefault();

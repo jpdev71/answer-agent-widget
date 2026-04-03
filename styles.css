@@ -219,7 +219,6 @@ h1 {
 
 .widget-header,
 .widget-meta,
-.assistant-overview,
 .composer,
 .widget-footer {
   padding: 18px 18px 0;
@@ -291,29 +290,9 @@ h1 {
   padding: 12px 14px;
 }
 
-.assistant-overview {
-  display: grid;
-  gap: 10px;
-}
-
-.overview-title,
 .voice-title {
   margin: 0;
   font-weight: 600;
-}
-
-.prompt-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.prompt-chip {
-  border: 1px solid rgba(18, 60, 99, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  padding: 10px 12px;
-  cursor: pointer;
 }
 
 .voice-panel {
