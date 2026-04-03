@@ -202,8 +202,8 @@ h1 {
   z-index: 19;
   width: min(400px, calc(100vw - 32px));
   max-height: min(680px, calc(100vh - 120px));
-  display: grid;
-  grid-template-rows: auto auto auto auto 1fr auto auto;
+  display: flex;
+  flex-direction: column;
   border-radius: 30px;
   background: var(--panel);
   overflow: hidden;
@@ -317,7 +317,12 @@ h1 {
   flex-direction: column;
   gap: 12px;
   overflow: auto;
-  min-height: 120px;
+  max-height: 220px;
+  min-height: 0;
+}
+
+.message-list:empty {
+  display: none;
 }
 
 .message {
@@ -436,6 +441,10 @@ h1 {
     bottom: 80px;
     width: calc(100vw - 32px);
     max-height: min(560px, calc(100vh - 96px));
+  }
+
+  .message-list {
+    max-height: 180px;
   }
 
   .message-input {
