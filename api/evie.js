@@ -55,6 +55,8 @@ module.exports = async function handler(req, res) {
     offer_consult_link: result.offerConsultLink,
     consult_link: result.offerConsultLink ? CONSULT_LINK : "",
     lead_fields_needed: result.leadFieldsNeeded,
+    response_source: result.responseSource,
+    fallback_reason: result.fallbackReason || "",
     lead_record: lead,
     prompt_version: getPromptVersion(),
   });
@@ -211,6 +213,8 @@ async function buildReply(message, lead, transcript) {
       requestContactCapture: false,
       offerConsultLink: false,
       leadFieldsNeeded: [],
+      responseSource: "guardrail",
+      fallbackReason: "",
     };
   }
 
@@ -222,7 +226,10 @@ async function buildReply(message, lead, transcript) {
     }
   }
 
-  return heuristicFallback();
+  const fallback = heuristicFallback();
+  fallback.responseSource = "heuristic_fallback";
+  fallback.fallbackReason = "openai_unavailable_or_invalid";
+  return fallback;
 }
 
 function buildHeuristicReply(
@@ -269,6 +276,8 @@ function buildHeuristicReply(
     requestContactCapture,
     offerConsultLink,
     leadFieldsNeeded,
+    responseSource: "heuristic",
+    fallbackReason: "",
   };
 }
 
@@ -348,6 +357,8 @@ async function buildOpenAIReply(message, lead, transcript) {
     requestContactCapture: parsed.request_contact_capture,
     offerConsultLink,
     leadFieldsNeeded: parsed.lead_fields_needed,
+    responseSource: "openai",
+    fallbackReason: "",
   };
 }
 
@@ -356,9 +367,13 @@ function buildOpenAIInstructions(lead) {
     "You are generating the next response for Evie, a helpful-first Georgia personal injury website intake assistant.",
     "Return only JSON matching the provided schema.",
     "Be conversational and specific. Do not sound like a decision tree.",
+    "Never use generic assistant filler like 'How can I assist you today?' unless the user is completely generic and even then keep it in Evie's law-firm voice.",
     "Answer the user's actual question first when possible.",
     "Do not reset to a generic opener after factual follow-up answers.",
     "Do not over-push qualification or contact capture.",
+    "If the user asks whether the firm handles a scenario, answer that directly before anything else.",
+    "If the user provides a location outside Georgia, acknowledge that fact explicitly and adjust the response accordingly.",
+    "Avoid vague acknowledgments like 'That helps' unless immediately followed by a concrete next step or reason.",
     "Do not give legal advice, guarantees, or exact strategy.",
     "If the matter appears likely qualified, you may offer the consultation link path.",
     "If the matter is weaker or unclear, stay helpful and say the firm can review.",

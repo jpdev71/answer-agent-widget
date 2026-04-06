@@ -196,6 +196,11 @@ async function submitCurrentMessage() {
     return;
   }
 
+  if (response.meta?.response_source === "heuristic_fallback") {
+    setStatus("OpenAI fallback engaged. Reply came from heuristic backend.");
+    return;
+  }
+
   if (response.meta?.offer_consult_link) {
     setStatus("Replied and offered a consultation path.");
     return;
@@ -277,6 +282,11 @@ function startBrowserRecognition() {
 
     if (response.meta?.fallback) {
       setStatus("Voice response completed using local fallback.");
+      return;
+    }
+
+    if (response.meta?.response_source === "heuristic_fallback") {
+      setStatus("Voice reply used heuristic fallback.");
       return;
     }
 
