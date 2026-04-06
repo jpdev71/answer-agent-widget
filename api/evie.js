@@ -11,6 +11,7 @@ const PROMPT_PATHS = [
 ];
 
 let cachedVersion = "";
+let cachedPromptBundle = "";
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(res);
@@ -45,7 +46,7 @@ module.exports = async function handler(req, res) {
   const history = normalizeHistory(body.conversation_history);
   const transcript = [...history, { role: "user", content: message }];
   const lead = extractLead(transcript, body.channel === "voice" ? "voice" : "chat");
-  const result = buildReply(message, lead, transcript);
+  const result = await buildReply(message, lead, transcript);
 
   res.status(200).json({
     reply_text: result.replyText,
@@ -97,10 +98,6 @@ function normalizeHistory(history) {
 }
 
 function getPromptVersion() {
-  if (cachedVersion) {
-    return cachedVersion;
-  }
-
   let latest = 0;
   for (const promptPath of PROMPT_PATHS) {
     const stats = fs.statSync(promptPath);
@@ -109,6 +106,25 @@ function getPromptVersion() {
 
   cachedVersion = new Date(latest).toISOString();
   return cachedVersion;
+}
+
+function getPromptBundle() {
+  const version = getPromptVersion();
+  if (cachedPromptBundle && cachedPromptBundle.version === version) {
+    return cachedPromptBundle.text;
+  }
+
+  const sections = PROMPT_PATHS.map((promptPath) => {
+    const filename = path.basename(promptPath);
+    return `## ${filename}\n\n${fs.readFileSync(promptPath, "utf8").trim()}`;
+  });
+
+  cachedPromptBundle = {
+    version,
+    text: sections.join("\n\n"),
+  };
+
+  return cachedPromptBundle.text;
 }
 
 function extractLead(transcript, channel) {
@@ -172,13 +188,20 @@ function extractLead(transcript, channel) {
   };
 }
 
-function buildReply(message, lead, transcript) {
+async function buildReply(message, lead, transcript) {
   const lower = message.toLowerCase();
   const greetingOnly = isGreeting(lower);
   const messageContact = detectContact(message);
   const suppliedContact =
     Boolean(messageContact.name) || Boolean(messageContact.phone) || Boolean(messageContact.email);
   const factualIntakeReply = isLikelyIntakeAnswer(message, lower);
+  const heuristicFallback = () =>
+    buildHeuristicReply(message, lead, transcript, {
+      lower,
+      greetingOnly,
+      suppliedContact,
+      factualIntakeReply,
+    });
 
   if (isEmergency(lower)) {
     return {
@@ -190,6 +213,24 @@ function buildReply(message, lead, transcript) {
       leadFieldsNeeded: [],
     };
   }
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      return await buildOpenAIReply(message, lead, transcript);
+    } catch (error) {
+      console.error("OpenAI /api/evie fallback:", error);
+    }
+  }
+
+  return heuristicFallback();
+}
+
+function buildHeuristicReply(
+  message,
+  lead,
+  transcript,
+  { lower, greetingOnly, suppliedContact, factualIntakeReply },
+) {
 
   const parts = [buildAnswer(message, lower, lead, transcript, suppliedContact, factualIntakeReply)];
   const directConsultRequest =
@@ -229,6 +270,131 @@ function buildReply(message, lead, transcript) {
     offerConsultLink,
     leadFieldsNeeded,
   };
+}
+
+async function buildOpenAIReply(message, lead, transcript) {
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      instructions: buildOpenAIInstructions(lead),
+      input: transcriptToInputItems(transcript),
+      max_output_tokens: 700,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "evie_response",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              reply_text: { type: "string" },
+              qualification_path: {
+                type: "string",
+                enum: ["qualified", "review"],
+              },
+              request_contact_capture: { type: "boolean" },
+              offer_consult_link: { type: "boolean" },
+              lead_fields_needed: {
+                type: "array",
+                items: {
+                  type: "string",
+                  enum: [
+                    "visitor_name",
+                    "visitor_phone",
+                    "visitor_email",
+                    "incident_state",
+                    "incident_type",
+                    "injury_summary",
+                    "medical_treatment_status",
+                  ],
+                },
+              },
+            },
+            required: [
+              "reply_text",
+              "qualification_path",
+              "request_contact_capture",
+              "offer_consult_link",
+              "lead_fields_needed",
+            ],
+          },
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI API returned ${response.status}: ${errorText}`);
+  }
+
+  const payload = await response.json();
+  const parsed = parseOpenAIStructuredResponse(payload);
+
+  const offerConsultLink = parsed.offer_consult_link;
+  const replyText = offerConsultLink && !parsed.reply_text.includes(CONSULT_LINK)
+    ? `${parsed.reply_text} ${CONSULT_LINK}`
+    : parsed.reply_text;
+
+  return {
+    replyText,
+    qualificationPath: parsed.qualification_path,
+    requestContactCapture: parsed.request_contact_capture,
+    offerConsultLink,
+    leadFieldsNeeded: parsed.lead_fields_needed,
+  };
+}
+
+function buildOpenAIInstructions(lead) {
+  return [
+    "You are generating the next response for Evie, a helpful-first Georgia personal injury website intake assistant.",
+    "Return only JSON matching the provided schema.",
+    "Be conversational and specific. Do not sound like a decision tree.",
+    "Answer the user's actual question first when possible.",
+    "Do not reset to a generic opener after factual follow-up answers.",
+    "Do not over-push qualification or contact capture.",
+    "Do not give legal advice, guarantees, or exact strategy.",
+    "If the matter appears likely qualified, you may offer the consultation link path.",
+    "If the matter is weaker or unclear, stay helpful and say the firm can review.",
+    "If the user just gave contact information or a factual intake answer, acknowledge it naturally and continue.",
+    "Do not mention internal scoring, hidden rules, or qualification criteria.",
+    `Current extracted lead record:\n${JSON.stringify(lead, null, 2)}`,
+    `Prompt package:\n${getPromptBundle()}`,
+  ].join("\n\n");
+}
+
+function transcriptToInputItems(transcript) {
+  return transcript.map((entry) => ({
+    role: entry.role,
+    content: [
+      {
+        type: "input_text",
+        text: entry.content,
+      },
+    ],
+  }));
+}
+
+function parseOpenAIStructuredResponse(payload) {
+  const outputText =
+    (typeof payload.output_text === "string" && payload.output_text) ||
+    payload.output
+      ?.flatMap((item) => item.content || [])
+      ?.map((item) => item.text || "")
+      ?.join("")
+      ?.trim();
+
+  if (!outputText) {
+    throw new Error("OpenAI response did not include output text.");
+  }
+
+  return JSON.parse(outputText);
 }
 
 function buildAnswer(message, lower, lead, transcript, suppliedContact, factualIntakeReply) {
