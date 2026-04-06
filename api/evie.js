@@ -192,18 +192,6 @@ function extractLead(transcript, channel) {
 
 async function buildReply(message, lead, transcript) {
   const lower = message.toLowerCase();
-  const greetingOnly = isGreeting(lower);
-  const messageContact = detectContact(message);
-  const suppliedContact =
-    Boolean(messageContact.name) || Boolean(messageContact.phone) || Boolean(messageContact.email);
-  const factualIntakeReply = isLikelyIntakeAnswer(message, lower);
-  const heuristicFallback = () =>
-    buildHeuristicReply(message, lead, transcript, {
-      lower,
-      greetingOnly,
-      suppliedContact,
-      factualIntakeReply,
-    });
 
   if (isEmergency(lower)) {
     return {
@@ -223,62 +211,11 @@ async function buildReply(message, lead, transcript) {
       return await buildOpenAIReply(message, lead, transcript);
     } catch (error) {
       console.error("OpenAI /api/evie fallback:", error);
+      return buildUnavailableReply(lead, "openai_runtime_error");
     }
   }
 
-  const fallback = heuristicFallback();
-  fallback.responseSource = "heuristic_fallback";
-  fallback.fallbackReason = "openai_unavailable_or_invalid";
-  return fallback;
-}
-
-function buildHeuristicReply(
-  message,
-  lead,
-  transcript,
-  { lower, greetingOnly, suppliedContact, factualIntakeReply },
-) {
-
-  const parts = [buildAnswer(message, lower, lead, transcript, suppliedContact, factualIntakeReply)];
-  const directConsultRequest =
-    /schedule|book|share (?:the )?link|consultation link|talk to someone|speak with someone|call me/.test(
-      lower
-    ) || (lower.includes("consult") && lower.includes("link"));
-  const offerConsultLink =
-    directConsultRequest ||
-    (lead.qualification_path === "qualified" &&
-      Boolean(lead.incident_state && lead.injury_summary));
-  const leadFieldsNeeded = collectMissingLeadFields(lead);
-  const missingContact = leadFieldsNeeded.filter((field) =>
-    ["visitor_name", "visitor_phone", "visitor_email"].includes(field)
-  );
-  const requestContactCapture =
-    missingContact.length > 0 && (offerConsultLink || lead.qualification_path === "qualified");
-
-  if (offerConsultLink) {
-    parts.push(`If you'd like to move ahead, here's the consultation link: ${CONSULT_LINK}`);
-  }
-
-  if (requestContactCapture && !directConsultRequest) {
-    parts.push(
-      "If you'd like the firm to follow up directly, you can also share your full name, phone number, and email."
-    );
-  } else if (!greetingOnly && !suppliedContact) {
-    const nextQuestion = nextIntakeQuestion(lead, transcript, lower);
-    if (nextQuestion) {
-      parts.push(nextQuestion);
-    }
-  }
-
-  return {
-    replyText: parts.filter(Boolean).join(" "),
-    qualificationPath: lead.qualification_path,
-    requestContactCapture,
-    offerConsultLink,
-    leadFieldsNeeded,
-    responseSource: "heuristic",
-    fallbackReason: "",
-  };
+  return buildUnavailableReply(lead, "missing_openai_api_key");
 }
 
 async function buildOpenAIReply(message, lead, transcript) {
@@ -412,92 +349,6 @@ function parseOpenAIStructuredResponse(payload) {
   return JSON.parse(outputText);
 }
 
-function buildAnswer(message, lower, lead, transcript, suppliedContact, factualIntakeReply) {
-  if (isGreeting(lower)) {
-    return "Hello. I'm Evie, the firm's intake assistant. I can help with questions about personal injury matters, consultations, and general next steps.";
-  }
-  if (suppliedContact) {
-    if (lead.qualification_path === "qualified") {
-      return "Thank you. That helps. Based on what you've shared, this sounds like something the firm may want to review more closely.";
-    }
-    return "Thank you. I've got that information, and I can make sure the firm has it for review.";
-  }
-  if (factualIntakeReply) {
-    return "Thank you. That helps.";
-  }
-  if (/free consultation|is it free/.test(lower)) {
-    return "Yes. The firm offers free consultations, and I can also help gather the basics here first if that's easier.";
-  }
-  if (/what happens.*consultation|during a consultation/.test(lower)) {
-    return "A consultation is usually a chance for the firm to learn what happened, ask about injuries and treatment, and decide whether the matter is something they may be able to help with.";
-  }
-  if (/consultation link|share (?:the )?link|schedule consult|book consult/.test(lower)) {
-    return "Absolutely. I can share the consultation link, and if you'd like, you can also send your contact details so the firm can follow up directly.";
-  }
-  if (/do you handle|do you take|can you help with|practice area|what kinds of cases/.test(lower)) {
-    return "The firm reviews Georgia personal injury matters, including vehicle collisions, trucking matters, slip and falls, nursing home abuse, and other injury cases.";
-  }
-  if (lower.includes("do i have a case")) {
-    return "That usually depends on things like fault, injuries, treatment, insurance coverage, and the available evidence. I can't tell you for sure that you do or don't have a claim here, but I can help gather the basics and point you toward a consultation if it looks like a fit.";
-  }
-  if (/worth|value|settlement|compensation/.test(lower)) {
-    return "Case value can vary a lot based on the injuries, treatment, lost income, liability, and available coverage. I can't estimate a number here, but the firm can review the details more closely.";
-  }
-  if (/insurance adjuster|recorded statement/.test(lower) || (lower.includes("insurance") && lower.includes("statement"))) {
-    return "In general, it's smart to be careful with recorded insurance statements because the details can matter later. I can't advise you specifically on what to do, but the firm can review the situation and help you think through next steps.";
-  }
-  if (/how long do i have|deadline|statute/.test(lower)) {
-    return "Many Georgia personal injury claims have a two-year filing deadline, but exceptions and timing details can matter, so it's best not to rely on a general answer alone if timing is important.";
-  }
-  if (/sign this release|medical release/.test(lower)) {
-    return "In general, it's wise to be cautious before signing insurance or medical release forms without understanding what they cover. I can't advise you specifically, but the firm can review the situation with you.";
-  }
-  if (lead.represented_by_other_attorney === "yes" || lower.includes("already have a lawyer")) {
-    return "If you already have an attorney, case-specific decisions are usually best discussed with them directly. I can still answer basic questions about the firm's process if that's helpful.";
-  }
-  if (lower.includes("phone") || lower.includes("call")) {
-    return "If you'd prefer to speak with someone directly, I can help you move toward a consultation and make sure the firm has your contact information for follow-up.";
-  }
-  if (/what should i do|next step/.test(lower)) {
-    return "A good general next step is to get appropriate medical care, preserve photos and records, and avoid making important case decisions based only on a general online answer.";
-  }
-  if (soundsLikeIncident(lower)) {
-    if (lead.incident_state === "Georgia") {
-      return "The firm does review Georgia personal injury matters, and I'm sorry you're dealing with that.";
-    }
-    return "Thank you for sharing that. I'm sorry you're dealing with that.";
-  }
-  return "I can help with Georgia personal injury questions, consultation details, and next-step intake. If you tell me what happened, I can help you get oriented.";
-}
-
-function nextIntakeQuestion(lead, transcript, lower) {
-  if (isGreeting(lower) || (!soundsLikeIncident(lower) && detectGoal(lower) === "general_help")) {
-    return "";
-  }
-
-  const questions = [
-    [!lead.incident_state, "What city and state did the incident occur in?"],
-    [lead.incident_type === "unknown", "Can you briefly tell me what happened?"],
-    [!lead.injury_summary, "What injuries were involved?"],
-    [!lead.incident_date_text, "About when did this happen?"],
-    [lead.medical_treatment_status === "unknown", "Did you seek medical treatment after it happened?"],
-    [
-      lead.commercial_vehicle_involved === "unknown" && lead.incident_type.includes("accident"),
-      "Was a commercial vehicle or work truck involved?",
-    ],
-  ];
-
-  const next = questions.find(([missing]) => missing);
-  if (!next) {
-    return "";
-  }
-
-  const askedQuestion = lower.includes("?") && !soundsLikeIncident(lower);
-  return askedQuestion
-    ? `If you'd like, I can also help with one quick intake question: ${next[1]}`
-    : next[1];
-}
-
 function collectMissingLeadFields(lead) {
   const missing = [];
   if (!lead.visitor_name) missing.push("visitor_name");
@@ -602,13 +453,6 @@ function detectRepresented(lower) {
   return "unknown";
 }
 
-function detectGoal(lower) {
-  if (/consult|schedule|book/.test(lower)) return "schedule_consultation";
-  if (/do i have a case|worth|deadline|insurance/.test(lower)) return "legal_process_question";
-  if (/what happens.*consultation|during a consultation/.test(lower)) return "consultation_process";
-  return "general_help";
-}
-
 function detectContact(text) {
   const email = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0] || "";
   const phone =
@@ -668,42 +512,20 @@ function buildSummary(input) {
   return parts.join(" ");
 }
 
-function soundsLikeIncident(lower) {
-  return /i was|my mother|got hurt|accident|injured|crash/.test(lower);
-}
-
-function isLikelyIntakeAnswer(message, lower) {
-  if (isGreeting(lower)) {
-    return false;
-  }
-
-  if (detectContact(message).name || detectContact(message).phone || detectContact(message).email) {
-    return true;
-  }
-
-  if (detectState(lower) || detectCity(message)) {
-    return true;
-  }
-
-  if (detectTreatment(lower) !== "unknown") {
-    return true;
-  }
-
-  if (detectInjuries(lower)) {
-    return true;
-  }
-
-  if (/\byes\b|\bno\b/.test(lower)) {
-    return true;
-  }
-
-  return false;
-}
-
-function isGreeting(lower) {
-  return /^(hello|hi|hey|good morning|good afternoon|good evening)\b[!.? ]*$/.test(lower.trim());
-}
-
 function isEmergency(lower) {
   return /can't breathe|bleeding badly|emergency|call 911|immediate danger/.test(lower);
+}
+
+function buildUnavailableReply(lead, reason) {
+  const leadFieldsNeeded = collectMissingLeadFields(lead);
+  return {
+    replyText:
+      "I'm having trouble loading the full assistant right now. You can try again in a moment, or if you'd prefer, share your name, phone number, and email and the firm can follow up directly.",
+    qualificationPath: lead.qualification_path,
+    requestContactCapture: true,
+    offerConsultLink: false,
+    leadFieldsNeeded,
+    responseSource: "temporary_unavailable",
+    fallbackReason: reason,
+  };
 }

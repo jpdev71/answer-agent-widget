@@ -203,8 +203,8 @@ async function submitCurrentMessage() {
     return;
   }
 
-  if (response.meta?.response_source === "heuristic_fallback") {
-    setStatus("OpenAI fallback engaged. Reply came from heuristic backend.");
+  if (response.meta?.response_source === "temporary_unavailable") {
+    setStatus("The full assistant is temporarily unavailable.");
     return;
   }
 
@@ -303,8 +303,8 @@ function startBrowserRecognition() {
       return;
     }
 
-    if (response.meta?.response_source === "heuristic_fallback") {
-      setStatus("Voice reply used heuristic fallback.");
+    if (response.meta?.response_source === "temporary_unavailable") {
+      setStatus("The full voice assistant is temporarily unavailable.");
       return;
     }
 

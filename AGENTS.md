@@ -44,3 +44,4 @@ This file contains a growing ruleset that improves over time. **At session start
 6. [UX] Never let Evie reset to a generic opener after the user provides a factual intake answer because follow-up responses should acknowledge the new information and continue the conversation naturally.
 7. [PROCESS] Always make fallback behavior visible during testing because silent fallback makes it too hard to tell whether prompt issues are actually backend-runtime failures.
 8. [UX] Always let Evie open the widget with her own welcome message because user greetings like "hi" or "hey" add noise and weaken the first conversational turn.
+9. [ARCH] Never use the heuristic backend as a conversational fallback because a transparent temporary-unavailable response is better than a fake conversation that breaks trust.
