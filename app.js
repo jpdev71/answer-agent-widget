@@ -128,6 +128,15 @@ composer.addEventListener("submit", async (event) => {
   await submitCurrentMessage();
 });
 
+messageInput.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter" || event.shiftKey) {
+    return;
+  }
+
+  event.preventDefault();
+  await submitCurrentMessage();
+});
+
 voiceToggle.addEventListener("click", async () => {
   state.isVoiceModeActive = !state.isVoiceModeActive;
   voiceToggle.classList.toggle("is-active", state.isVoiceModeActive);

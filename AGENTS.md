@@ -39,3 +39,4 @@ This file contains a growing ruleset that improves over time. **At session start
 1. [UX] Always let the law-firm agent answer legal-process questions as helpfully as possible with cautious, general guidance because the user wants it to feel more useful than a rote decision-tree chatbot without crossing into legal advice.
 2. [UX] Always prioritize helpful question-answering over lead qualification or consult-link pushing because Evie's usefulness should be her main selling point.
 3. [UX] Never let Evie begin intake from a simple greeting alone because low-intent openers should feel welcoming and conversational rather than form-like.
+4. [UX] Always let Enter submit the widget message while reserving Shift+Enter for a newline because faster testing and chat-style interaction are preferred for this project.
