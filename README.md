@@ -1,6 +1,6 @@
 # Law Firm Answer Agent Demo
 
-Static Vercel-ready prototype for a lower-left website widget that acts like a personal injury law-firm answer agent.
+Vercel-ready prototype for a lower-left website widget that acts like a personal injury law-firm answer agent.
 
 ## Current direction
 
@@ -14,8 +14,7 @@ Static Vercel-ready prototype for a lower-left website widget that acts like a p
 
 - Floating lower-left widget
 - Chat and voice mode toggle
-- Quick prompt chips for common intake questions
-- Demo answer logic for consultations, practice areas, claim timing, and next steps
+- `/api/evie` endpoint for helpful-first chat responses and intake routing
 - Provider stubs for `demo`, `ElevenLabs`, `Retell`, and `HeyGen`
 - Static hosting config for Vercel
 
@@ -23,22 +22,46 @@ Static Vercel-ready prototype for a lower-left website widget that acts like a p
 
 - `index.html` - page shell and widget markup
 - `styles.css` - layout, branding, and responsive styling
-- `app.js` - widget logic, knowledge responses, and browser voice placeholder
+- `app.js` - widget logic, API client, and browser voice placeholder
+- `api/evie.js` - server endpoint for Evie prompt behavior and structured intake output
 - `vercel.json` - simple Vercel config
 
 ## Deploy
 
 This project can be imported into Vercel as a static site with no build step.
 
+## Current backend contract
+
+`POST /api/evie`
+
+```json
+{
+  "channel": "chat",
+  "message": "User text here",
+  "session_id": "browser-session-id",
+  "conversation_history": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ]
+}
+```
+
+Example response:
+
+```json
+{
+  "reply_text": "Evie response",
+  "qualification_path": "qualified",
+  "request_contact_capture": true,
+  "offer_consult_link": false,
+  "consult_link": "",
+  "lead_fields_needed": ["visitor_name", "visitor_phone", "visitor_email"]
+}
+```
+
 ## Next recommended step
 
-Add a tiny server layer before connecting real APIs so the widget can keep secrets off the client. The first integration path should be ElevenLabs.
-
-Suggested next build phase:
-
-1. Add a server endpoint for protected provider requests.
-2. Replace the ElevenLabs placeholder with a real text or voice session flow.
-3. Tune answers and intake prompts around the firm's actual consultation process.
+Connect the endpoint to a real model runtime and keep the current structured response fields as the stable contract between the UI and the backend.
 
 ## Demo content note
 

@@ -1,8 +1,9 @@
 const state = {
-  provider: "demo",
+  provider: "evie-api",
   mode: "chat",
   isVoiceModeActive: false,
   recognition: null,
+  conversationHistory: [],
 };
 
 const knowledgeBase = {
@@ -58,44 +59,38 @@ const promptResponses = [
 ];
 
 const providers = {
-  demo: {
-    label: "Demo simulator",
+  "evie-api": {
+    label: "Evie API",
     async sendText(message) {
-      await sleep(350);
-      return buildDemoResponse(message);
+      try {
+        const response = await fetch("/api/evie", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel: state.mode,
+            message,
+            session_id: getSessionId(),
+            conversation_history: state.conversationHistory,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+
+        const payload = await response.json();
+        return { text: payload.reply_text, meta: payload };
+      } catch (error) {
+        return {
+          text: buildDemoResponse(message),
+          meta: { fallback: true, error: error.message },
+        };
+      }
     },
     async startVoice() {
-      return "Voice mode is active in demo form. Speak naturally and I will turn the transcript into a chat response.";
-    },
-  },
-  elevenlabs: {
-    label: "ElevenLabs",
-    async sendText(message) {
-      await sleep(220);
-      return `ElevenLabs is selected as the primary integration path. For now this is still using demo logic underneath. Your message was: "${message}". The next step is adding a protected server endpoint so the widget can create or forward real agent requests without exposing the API key.`;
-    },
-    async startVoice() {
-      return "ElevenLabs voice mode is the intended first live integration. This placeholder keeps the UX intact while we decide the exact auth and session flow.";
-    },
-  },
-  retell: {
-    label: "Retell",
-    async sendText() {
-      await sleep(220);
-      return "Retell is available as a future option, but this demo is currently optimized around an ElevenLabs-first path.";
-    },
-    async startVoice() {
-      return "Retell voice mode is stubbed for comparison testing later if we want to benchmark another voice stack.";
-    },
-  },
-  heygen: {
-    label: "HeyGen planning",
-    async sendText() {
-      await sleep(220);
-      return "HeyGen is being treated as a later avatar layer rather than the first production integration for this demo.";
-    },
-    async startVoice() {
-      return "HeyGen planning mode is active. If we add it later, it will likely sit on top of a chat or voice engine rather than replace one.";
+      return "Voice mode is still using browser speech recognition as a placeholder. The shared Evie backend now powers the response once your transcript is captured.";
     },
   },
 };
@@ -179,11 +174,24 @@ async function submitCurrentMessage() {
   }
 
   addUserMessage(message);
+  state.conversationHistory.push({ role: "user", content: message });
   messageInput.value = "";
   setStatus("Thinking...");
 
   const response = await providers[state.provider].sendText(message);
-  addAgentMessage(response);
+  addAgentMessage(response.text);
+  state.conversationHistory.push({ role: "assistant", content: response.text });
+
+  if (response.meta?.fallback) {
+    setStatus("API unavailable. Replied using local fallback.");
+    return;
+  }
+
+  if (response.meta?.offer_consult_link) {
+    setStatus("Replied and offered a consultation path.");
+    return;
+  }
+
   setStatus(`Replied using ${providers[state.provider].label}.`);
 }
 
@@ -252,9 +260,17 @@ function startBrowserRecognition() {
     }
 
     addUserMessage(transcript);
+    state.conversationHistory.push({ role: "user", content: transcript });
     setStatus("Processing voice transcript...");
     const response = await providers[state.provider].sendText(transcript);
-    addAgentMessage(response);
+    addAgentMessage(response.text);
+    state.conversationHistory.push({ role: "assistant", content: response.text });
+
+    if (response.meta?.fallback) {
+      setStatus("Voice response completed using local fallback.");
+      return;
+    }
+
     setStatus(`Voice response completed using ${providers[state.provider].label}.`);
   });
 
@@ -284,4 +300,16 @@ function stopBrowserRecognition() {
 
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function getSessionId() {
+  const storageKey = "evie-demo-session-id";
+  const existing = window.localStorage.getItem(storageKey);
+  if (existing) {
+    return existing;
+  }
+
+  const sessionId = `session-${crypto.randomUUID()}`;
+  window.localStorage.setItem(storageKey, sessionId);
+  return sessionId;
 }
