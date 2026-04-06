@@ -336,6 +336,14 @@ h1 {
   margin: 0;
 }
 
+.message a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+
 .message-agent {
   background: rgba(255, 255, 255, 0.82);
   border-top-left-radius: 8px;

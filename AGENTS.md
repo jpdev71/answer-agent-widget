@@ -40,3 +40,5 @@ This file contains a growing ruleset that improves over time. **At session start
 2. [UX] Always prioritize helpful question-answering over lead qualification or consult-link pushing because Evie's usefulness should be her main selling point.
 3. [UX] Never let Evie begin intake from a simple greeting alone because low-intent openers should feel welcoming and conversational rather than form-like.
 4. [UX] Always let Enter submit the widget message while reserving Shift+Enter for a newline because faster testing and chat-style interaction are preferred for this project.
+5. [UX] Always render consultation URLs as clickable links in the widget because copy-paste scheduling links create unnecessary user friction.
+6. [UX] Never let Evie reset to a generic opener after the user provides a factual intake answer because follow-up responses should acknowledge the new information and continue the conversation naturally.

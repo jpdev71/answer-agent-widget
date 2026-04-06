@@ -175,6 +175,10 @@ function extractLead(transcript, channel) {
 function buildReply(message, lead, transcript) {
   const lower = message.toLowerCase();
   const greetingOnly = isGreeting(lower);
+  const messageContact = detectContact(message);
+  const suppliedContact =
+    Boolean(messageContact.name) || Boolean(messageContact.phone) || Boolean(messageContact.email);
+  const factualIntakeReply = isLikelyIntakeAnswer(message, lower);
 
   if (isEmergency(lower)) {
     return {
@@ -187,7 +191,7 @@ function buildReply(message, lead, transcript) {
     };
   }
 
-  const parts = [buildAnswer(lower, lead)];
+  const parts = [buildAnswer(message, lower, lead, transcript, suppliedContact, factualIntakeReply)];
   const directConsultRequest =
     /schedule|book|share (?:the )?link|consultation link|talk to someone|speak with someone|call me/.test(
       lower
@@ -211,7 +215,7 @@ function buildReply(message, lead, transcript) {
     parts.push(
       "If you'd like the firm to follow up directly, you can also share your full name, phone number, and email."
     );
-  } else if (!greetingOnly) {
+  } else if (!greetingOnly && !suppliedContact) {
     const nextQuestion = nextIntakeQuestion(lead, transcript, lower);
     if (nextQuestion) {
       parts.push(nextQuestion);
@@ -227,9 +231,18 @@ function buildReply(message, lead, transcript) {
   };
 }
 
-function buildAnswer(lower, lead) {
+function buildAnswer(message, lower, lead, transcript, suppliedContact, factualIntakeReply) {
   if (isGreeting(lower)) {
     return "Hello. I'm Evie, the firm's intake assistant. I can help with questions about personal injury matters, consultations, and general next steps.";
+  }
+  if (suppliedContact) {
+    if (lead.qualification_path === "qualified") {
+      return "Thank you. That helps. Based on what you've shared, this sounds like something the firm may want to review more closely.";
+    }
+    return "Thank you. I've got that information, and I can make sure the firm has it for review.";
+  }
+  if (factualIntakeReply) {
+    return "Thank you. That helps.";
   }
   if (/free consultation|is it free/.test(lower)) {
     return "Yes. The firm offers free consultations, and I can also help gather the basics here first if that's easier.";
@@ -419,7 +432,11 @@ function detectContact(text) {
   const email = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0] || "";
   const phone =
     text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0] || "";
-  const name = text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/)?.[1] || "";
+  const explicitName =
+    text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/)?.[1] || "";
+  const leadingName =
+    text.match(/^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*,/)?.[1] || "";
+  const name = explicitName || leadingName;
   return { name, phone, email };
 }
 
@@ -472,6 +489,34 @@ function buildSummary(input) {
 
 function soundsLikeIncident(lower) {
   return /i was|my mother|got hurt|accident|injured|crash/.test(lower);
+}
+
+function isLikelyIntakeAnswer(message, lower) {
+  if (isGreeting(lower)) {
+    return false;
+  }
+
+  if (detectContact(message).name || detectContact(message).phone || detectContact(message).email) {
+    return true;
+  }
+
+  if (detectState(lower) || detectCity(message)) {
+    return true;
+  }
+
+  if (detectTreatment(lower) !== "unknown") {
+    return true;
+  }
+
+  if (detectInjuries(lower)) {
+    return true;
+  }
+
+  if (/\byes\b|\bno\b/.test(lower)) {
+    return true;
+  }
+
+  return false;
 }
 
 function isGreeting(lower) {

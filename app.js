@@ -217,7 +217,7 @@ function addMessage(content, role) {
   article.className = `message message-${role}`;
 
   const paragraph = document.createElement("p");
-  paragraph.textContent = content;
+  appendFormattedMessage(paragraph, content);
 
   article.append(paragraph);
   messageList.append(article);
@@ -321,4 +321,29 @@ function getSessionId() {
   const sessionId = `session-${crypto.randomUUID()}`;
   window.localStorage.setItem(storageKey, sessionId);
   return sessionId;
+}
+
+function appendFormattedMessage(container, content) {
+  const urlPattern = /(https?:\/\/[^\s]+)/g;
+  const parts = content.split(urlPattern);
+
+  for (const part of parts) {
+    if (!part) {
+      continue;
+    }
+
+    if (urlPattern.test(part)) {
+      const link = document.createElement("a");
+      link.href = part;
+      link.textContent = part;
+      link.target = "_blank";
+      link.rel = "noreferrer noopener";
+      container.append(link);
+      urlPattern.lastIndex = 0;
+      continue;
+    }
+
+    container.append(document.createTextNode(part));
+    urlPattern.lastIndex = 0;
+  }
 }
