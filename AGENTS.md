@@ -43,3 +43,4 @@ This file contains a growing ruleset that improves over time. **At session start
 5. [UX] Always render consultation URLs as clickable links in the widget because copy-paste scheduling links create unnecessary user friction.
 6. [UX] Never let Evie reset to a generic opener after the user provides a factual intake answer because follow-up responses should acknowledge the new information and continue the conversation naturally.
 7. [PROCESS] Always make fallback behavior visible during testing because silent fallback makes it too hard to tell whether prompt issues are actually backend-runtime failures.
+8. [UX] Always let Evie open the widget with her own welcome message because user greetings like "hi" or "hey" add noise and weaken the first conversational turn.

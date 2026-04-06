@@ -4,6 +4,7 @@ const state = {
   isVoiceModeActive: false,
   recognition: null,
   conversationHistory: [],
+  hasRenderedWelcome: false,
 };
 
 const knowledgeBase = {
@@ -117,6 +118,7 @@ closeButton.addEventListener("click", () => {
 jumpToWidgetButton.addEventListener("click", () => {
   widget.classList.remove("is-hidden");
   launcher.setAttribute("aria-expanded", "true");
+  ensureWelcomeMessage();
   messageInput.focus();
 });
 
@@ -162,6 +164,11 @@ voiceToggle.addEventListener("click", async () => {
 function toggleWidgetVisibility() {
   const isHidden = widget.classList.toggle("is-hidden");
   launcher.setAttribute("aria-expanded", String(!isHidden));
+
+  if (!isHidden) {
+    ensureWelcomeMessage();
+    messageInput.focus();
+  }
 }
 
 function setMode(mode) {
@@ -231,6 +238,17 @@ function addMessage(content, role) {
 
 function setStatus(message) {
   statusText.textContent = message;
+}
+
+function ensureWelcomeMessage() {
+  if (state.hasRenderedWelcome) {
+    return;
+  }
+
+  addAgentMessage(
+    "Hi, I'm Evie. You can ask me questions about personal injury matters, consultations, or next steps. Use Chat or Voice to get started."
+  );
+  state.hasRenderedWelcome = true;
 }
 
 function buildDemoResponse(message) {
