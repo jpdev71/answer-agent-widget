@@ -174,6 +174,8 @@ function extractLead(transcript, channel) {
 
 function buildReply(message, lead, transcript) {
   const lower = message.toLowerCase();
+  const greetingOnly = isGreeting(lower);
+
   if (isEmergency(lower)) {
     return {
       replyText:
@@ -209,7 +211,7 @@ function buildReply(message, lead, transcript) {
     parts.push(
       "If you'd like the firm to follow up directly, you can also share your full name, phone number, and email."
     );
-  } else {
+  } else if (!greetingOnly) {
     const nextQuestion = nextIntakeQuestion(lead, transcript, lower);
     if (nextQuestion) {
       parts.push(nextQuestion);
@@ -226,6 +228,9 @@ function buildReply(message, lead, transcript) {
 }
 
 function buildAnswer(lower, lead) {
+  if (isGreeting(lower)) {
+    return "Hello. I'm Evie, the firm's intake assistant. I can help with questions about personal injury matters, consultations, and general next steps.";
+  }
   if (/free consultation|is it free/.test(lower)) {
     return "Yes. The firm offers free consultations, and I can also help gather the basics here first if that's easier.";
   }
@@ -272,6 +277,10 @@ function buildAnswer(lower, lead) {
 }
 
 function nextIntakeQuestion(lead, transcript, lower) {
+  if (isGreeting(lower) || (!soundsLikeIncident(lower) && detectGoal(lower) === "general_help")) {
+    return "";
+  }
+
   const questions = [
     [!lead.incident_state, "What city and state did the incident occur in?"],
     [lead.incident_type === "unknown", "Can you briefly tell me what happened?"],
@@ -463,6 +472,10 @@ function buildSummary(input) {
 
 function soundsLikeIncident(lower) {
   return /i was|my mother|got hurt|accident|injured|crash/.test(lower);
+}
+
+function isGreeting(lower) {
+  return /^(hello|hi|hey|good morning|good afternoon|good evening)\b[!.? ]*$/.test(lower.trim());
 }
 
 function isEmergency(lower) {
