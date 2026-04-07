@@ -21,6 +21,8 @@ const providers = {
             channel: state.mode,
             message,
             session_id: getSessionId(),
+            page_url: window.location.href,
+            page_title: document.title,
             conversation_history: state.conversationHistory,
           }),
         });

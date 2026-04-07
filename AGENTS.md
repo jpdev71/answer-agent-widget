@@ -55,3 +55,4 @@ This file contains a growing ruleset that improves over time. **At session start
 17. [UX] Never offer the consultation link without some qualification first because only stronger leads that match the firm's profile should be routed to consult scheduling.
 18. [UX] Never continue ordinary intake for a routine out-of-state matter after scope is clear because Evie should set expectations instead of dragging the user through unnecessary questions.
 19. [UX] Always require a short qualification step before sharing the consultation link on a cold request because contact information alone is not enough to justify scheduling.
+20. [ARCH] Always prefer a webhook handoff for lead delivery because Zapier will route Evie's captured data into spreadsheets and notifications across different firms.

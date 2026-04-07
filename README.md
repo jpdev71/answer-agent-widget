@@ -59,9 +59,74 @@ Example response:
 }
 ```
 
+Optional request fields sent by the widget:
+
+```json
+{
+  "page_url": "https://example.com/contact",
+  "page_title": "Contact Us"
+}
+```
+
+## Lead webhook delivery
+
+If `LEAD_WEBHOOK_URL` is set, the backend will send a webhook when:
+
+- contact information is newly captured in the conversation
+- the lead appears viable for follow-up
+- the response came from the full OpenAI path
+
+Recommended environment variables:
+
+- `OPENAI_API_KEY`
+- `LEAD_WEBHOOK_URL`
+- `FIRM_ID` (optional)
+- `FIRM_NAME` (optional)
+
+Example webhook payload:
+
+```json
+{
+  "event_type": "lead.captured",
+  "delivered_at": "2026-04-07T21:00:00.000Z",
+  "firm_id": "dermer-appel-ruder",
+  "firm_name": "Dermer Appel Ruder",
+  "agent_name": "Evie",
+  "session_id": "session-123",
+  "source": {
+    "channel": "chat",
+    "lead_source": "website_widget",
+    "page_url": "https://example.com/",
+    "page_title": "Homepage"
+  },
+  "routing": {
+    "qualification_path": "qualified",
+    "request_contact_capture": false,
+    "offer_consult_link": true,
+    "consult_link": "https://calendly.com/social-amplifier/dermer-appel-ruder?month=2026-04",
+    "response_source": "openai"
+  },
+  "lead": {
+    "visitor_name": "Mike Margol",
+    "visitor_phone": "714-434-5927",
+    "visitor_email": "mike@jamespublishing.com",
+    "incident_state": "Georgia",
+    "incident_type": "truck_accident"
+  },
+  "transcript": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ],
+  "summary": {
+    "conversation_summary": "Visitor described a truck accident in Georgia...",
+    "lead_fields_needed": []
+  }
+}
+```
+
 ## Next recommended step
 
-Connect the endpoint to a real model runtime and keep the current structured response fields as the stable contract between the UI and the backend.
+Set `LEAD_WEBHOOK_URL`, connect the payload to Zapier, and map the fields into the firm's spreadsheet and notification flow.
 
 ## Demo content note
 

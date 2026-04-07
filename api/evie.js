@@ -43,10 +43,20 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  const requestMeta = extractRequestMeta(body);
   const history = normalizeHistory(body.conversation_history);
   const transcript = [...history, { role: "user", content: message }];
+  const priorLead = extractLead(history, body.channel === "voice" ? "voice" : "chat");
   const lead = extractLead(transcript, body.channel === "voice" ? "voice" : "chat");
   const result = await buildReply(message, lead, transcript);
+  const transcriptWithReply = [...transcript, { role: "assistant", content: result.replyText }];
+  const webhookDelivery = await maybeDeliverLead({
+    requestMeta,
+    priorLead,
+    lead,
+    result,
+    transcript: transcriptWithReply,
+  });
 
   res.status(200).json({
     reply_text: result.replyText,
@@ -59,6 +69,7 @@ module.exports = async function handler(req, res) {
     fallback_reason: result.fallbackReason || "",
     lead_record: lead,
     prompt_version: getPromptVersion(),
+    webhook_delivery: webhookDelivery,
   });
 };
 
@@ -84,6 +95,14 @@ function parseBody(body) {
 
 function readString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function extractRequestMeta(body) {
+  return {
+    sessionId: readString(body.session_id),
+    pageUrl: readString(body.page_url),
+    pageTitle: readString(body.page_title),
+  };
 }
 
 function normalizeHistory(history) {
@@ -188,6 +207,117 @@ function extractLead(transcript, channel) {
       commercialVehicleInvolved,
     }),
   };
+}
+
+async function maybeDeliverLead({ requestMeta, priorLead, lead, result, transcript }) {
+  const webhookUrl = readString(process.env.LEAD_WEBHOOK_URL);
+  if (!webhookUrl) {
+    return { attempted: false, delivered: false, reason: "missing_webhook_url" };
+  }
+
+  if (!shouldDeliverLead({ priorLead, lead, result })) {
+    return { attempted: false, delivered: false, reason: "conditions_not_met" };
+  }
+
+  const payload = buildLeadWebhookPayload({
+    requestMeta,
+    lead,
+    result,
+    transcript,
+  });
+
+  try {
+    const response = await postLeadWebhook(webhookUrl, payload);
+    return {
+      attempted: true,
+      delivered: response.ok,
+      reason: response.ok ? "" : `webhook_status_${response.status}`,
+      status: response.status,
+    };
+  } catch (error) {
+    console.error("Lead webhook delivery failed:", error);
+    return {
+      attempted: true,
+      delivered: false,
+      reason: "webhook_request_failed",
+    };
+  }
+}
+
+function shouldDeliverLead({ priorLead, lead, result }) {
+  const hasFreshContact =
+    !hasDeliverableContact(priorLead) &&
+    hasDeliverableContact(lead);
+
+  if (!hasFreshContact) {
+    return false;
+  }
+
+  if (result.responseSource !== "openai") {
+    return false;
+  }
+
+  const seemsViable =
+    result.qualificationPath === "qualified" ||
+    lead.follow_up_recommended;
+
+  if (lead.incident_state && lead.incident_state !== "Georgia" && result.qualificationPath !== "qualified") {
+    return false;
+  }
+
+  return seemsViable;
+}
+
+function hasDeliverableContact(lead) {
+  return Boolean(lead?.visitor_phone || lead?.visitor_email);
+}
+
+function buildLeadWebhookPayload({ requestMeta, lead, result, transcript }) {
+  return {
+    event_type: "lead.captured",
+    delivered_at: new Date().toISOString(),
+    firm_id: process.env.FIRM_ID || "dermer-appel-ruder",
+    firm_name: process.env.FIRM_NAME || "Dermer Appel Ruder",
+    agent_name: lead.agent_name,
+    session_id: requestMeta.sessionId,
+    source: {
+      channel: lead.conversation_channel,
+      lead_source: lead.lead_source,
+      page_url: requestMeta.pageUrl,
+      page_title: requestMeta.pageTitle,
+    },
+    routing: {
+      qualification_path: result.qualificationPath,
+      request_contact_capture: result.requestContactCapture,
+      offer_consult_link: result.offerConsultLink,
+      consult_link: result.offerConsultLink ? CONSULT_LINK : "",
+      response_source: result.responseSource,
+    },
+    lead,
+    transcript,
+    summary: {
+      conversation_summary: lead.conversation_summary,
+      lead_fields_needed: result.leadFieldsNeeded,
+    },
+  };
+}
+
+async function postLeadWebhook(webhookUrl, payload) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    return await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function buildReply(message, lead, transcript) {
