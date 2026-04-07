@@ -290,7 +290,10 @@ function appendFormattedMessage(container, content) {
     if (urlPattern.test(part)) {
       const link = document.createElement("a");
       link.href = part;
-      link.textContent = part;
+      link.textContent =
+        part.includes("calendly.com/social-amplifier/dermer-appel-ruder")
+          ? "Schedule a consultation"
+          : part;
       link.target = "_blank";
       link.rel = "noreferrer noopener";
       container.append(link);
