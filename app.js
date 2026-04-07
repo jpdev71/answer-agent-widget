@@ -149,6 +149,9 @@ async function submitCurrentMessage() {
   addAgentMessage(response.text);
   state.conversationHistory.push({ role: "assistant", content: response.text });
 
+  const webhookMeta = response.meta?.webhook_delivery;
+  const webhookStatus = formatWebhookStatus(webhookMeta);
+
   if (response.meta?.fallback) {
     setStatus("API unavailable. Replied using local fallback.");
     return;
@@ -160,11 +163,8 @@ async function submitCurrentMessage() {
   }
 
   if (response.meta?.offer_consult_link) {
-    if (response.meta?.webhook_delivery?.attempted) {
-      const webhookStatus = response.meta.webhook_delivery.delivered
-        ? " Lead webhook delivered."
-        : ` Lead webhook failed (${response.meta.webhook_delivery.reason || "unknown"}).`;
-      setStatus(`Replied and offered a consultation path.${webhookStatus}`);
+    if (webhookStatus) {
+      setStatus(`Replied and offered a consultation path. ${webhookStatus}`);
       return;
     }
 
@@ -172,10 +172,7 @@ async function submitCurrentMessage() {
     return;
   }
 
-  if (response.meta?.webhook_delivery?.attempted) {
-    const webhookStatus = response.meta.webhook_delivery.delivered
-      ? "Lead webhook delivered."
-      : `Lead webhook failed (${response.meta.webhook_delivery.reason || "unknown"}).`;
+  if (webhookStatus) {
     setStatus(webhookStatus);
     return;
   }
@@ -242,6 +239,8 @@ function startBrowserRecognition() {
     const response = await providers[state.provider].sendText(transcript);
     addAgentMessage(response.text);
     state.conversationHistory.push({ role: "assistant", content: response.text });
+    const webhookMeta = response.meta?.webhook_delivery;
+    const webhookStatus = formatWebhookStatus(webhookMeta);
 
     if (response.meta?.fallback) {
       setStatus("Voice response completed using local fallback.");
@@ -253,11 +252,8 @@ function startBrowserRecognition() {
       return;
     }
 
-    if (response.meta?.webhook_delivery?.attempted) {
-      const webhookStatus = response.meta.webhook_delivery.delivered
-        ? " Lead webhook delivered."
-        : ` Lead webhook failed (${response.meta.webhook_delivery.reason || "unknown"}).`;
-      setStatus(`Voice response completed using ${providers[state.provider].label}.${webhookStatus}`);
+    if (webhookStatus) {
+      setStatus(`Voice response completed using ${providers[state.provider].label}. ${webhookStatus}`);
       return;
     }
 
@@ -330,4 +326,18 @@ function appendFormattedMessage(container, content) {
     container.append(document.createTextNode(part));
     urlPattern.lastIndex = 0;
   }
+}
+
+function formatWebhookStatus(webhookMeta) {
+  if (!webhookMeta) {
+    return "";
+  }
+
+  if (webhookMeta.attempted) {
+    return webhookMeta.delivered
+      ? "Lead webhook delivered."
+      : `Lead webhook failed (${webhookMeta.reason || "unknown"}).`;
+  }
+
+  return `Lead webhook not sent (${webhookMeta.reason || "conditions_not_met"}).`;
 }
