@@ -160,7 +160,23 @@ async function submitCurrentMessage() {
   }
 
   if (response.meta?.offer_consult_link) {
+    if (response.meta?.webhook_delivery?.attempted) {
+      const webhookStatus = response.meta.webhook_delivery.delivered
+        ? " Lead webhook delivered."
+        : ` Lead webhook failed (${response.meta.webhook_delivery.reason || "unknown"}).`;
+      setStatus(`Replied and offered a consultation path.${webhookStatus}`);
+      return;
+    }
+
     setStatus("Replied and offered a consultation path.");
+    return;
+  }
+
+  if (response.meta?.webhook_delivery?.attempted) {
+    const webhookStatus = response.meta.webhook_delivery.delivered
+      ? "Lead webhook delivered."
+      : `Lead webhook failed (${response.meta.webhook_delivery.reason || "unknown"}).`;
+    setStatus(webhookStatus);
     return;
   }
 
@@ -234,6 +250,14 @@ function startBrowserRecognition() {
 
     if (response.meta?.response_source === "temporary_unavailable") {
       setStatus("The full voice assistant is temporarily unavailable.");
+      return;
+    }
+
+    if (response.meta?.webhook_delivery?.attempted) {
+      const webhookStatus = response.meta.webhook_delivery.delivered
+        ? " Lead webhook delivered."
+        : ` Lead webhook failed (${response.meta.webhook_delivery.reason || "unknown"}).`;
+      setStatus(`Voice response completed using ${providers[state.provider].label}.${webhookStatus}`);
       return;
     }
 
