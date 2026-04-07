@@ -284,9 +284,10 @@ async function buildOpenAIReply(message, lead, transcript) {
   const parsed = parseOpenAIStructuredResponse(payload);
 
   const offerConsultLink = parsed.offer_consult_link;
-  const replyText = offerConsultLink && !parsed.reply_text.includes(CONSULT_LINK)
-    ? `${parsed.reply_text} ${CONSULT_LINK}`
-    : parsed.reply_text;
+  const cleanReplyText = sanitizeReplyText(parsed.reply_text);
+  const replyText = offerConsultLink && !cleanReplyText.includes(CONSULT_LINK)
+    ? `${cleanReplyText} ${CONSULT_LINK}`
+    : cleanReplyText;
 
   return {
     replyText,
@@ -304,12 +305,16 @@ function buildOpenAIInstructions(lead) {
     "You are generating the next response for Evie, a helpful-first Georgia personal injury website intake assistant.",
     "Return only JSON matching the provided schema.",
     "Be conversational and specific. Do not sound like a decision tree.",
+    "Write only Evie's next turn. Do not script user replies, future turns, or mini-transcripts.",
+    "Do not include prefixes like 'User:' or 'Evie:' in reply_text.",
+    "Ask at most one intake question in a single reply.",
     "Never use generic assistant filler like 'How can I assist you today?' unless the user is completely generic and even then keep it in Evie's law-firm voice.",
     "Answer the user's actual question first when possible.",
     "Do not reset to a generic opener after factual follow-up answers.",
     "Do not over-push qualification or contact capture.",
     "If the user asks whether the firm handles a scenario, answer that directly before anything else.",
     "If the user provides a location outside Georgia, acknowledge that fact explicitly and adjust the response accordingly.",
+    "If the incident is outside Georgia, gently explain that the firm reviews Georgia matters and do not push contact capture unless something else sounds unusually compelling.",
     "Avoid vague acknowledgments like 'That helps' unless immediately followed by a concrete next step or reason.",
     "Do not give legal advice, guarantees, or exact strategy.",
     "If the matter appears likely qualified, you may offer the consultation link path.",
@@ -355,6 +360,19 @@ function parseOpenAIStructuredResponse(payload) {
   }
 
   return JSON.parse(outputText);
+}
+
+function sanitizeReplyText(replyText) {
+  const text = typeof replyText === "string" ? replyText.trim() : "";
+  if (!text) {
+    return "";
+  }
+
+  const simulatedTurnIndex = text.search(/\b(?:User|Evie):/);
+  const withoutTranscript =
+    simulatedTurnIndex > 0 ? text.slice(0, simulatedTurnIndex).trim() : text;
+
+  return withoutTranscript.replace(/\s+/g, " ").trim();
 }
 
 function collectMissingLeadFields(lead) {

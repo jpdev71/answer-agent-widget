@@ -48,3 +48,6 @@ This file contains a growing ruleset that improves over time. **At session start
 10. [CODE] Always verify that every backend helper referenced in production code is actually defined before deploying because a missing helper caused `/api/evie` to crash and masked the real API path.
 11. [UX] Never return browser-side demo responses when the live API fails because canned fallback copy hides production outages and makes debugging harder.
 12. [CODE] Always test the OpenAI conversation-history payload across multiple turns because a format that works on turn one can still break as soon as assistant history is included.
+13. [UX] Always tell users gently that the firm handles Georgia matters when they describe an out-of-state incident because Evie should set scope clearly without sounding harsh.
+14. [UX] Always ask one intake question at a time because single-question follow-up feels better for users and reduces conversational confusion.
+15. [UX] Only gather contact information for out-of-state matters when some other fact makes the lead unusually compelling because the firm generally is not interested in ordinary out-of-state leads.
