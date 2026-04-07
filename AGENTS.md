@@ -58,3 +58,5 @@ This file contains a growing ruleset that improves over time. **At session start
 20. [ARCH] Always prefer a webhook handoff for lead delivery because Zapier will route Evie's captured data into spreadsheets and notifications across different firms.
 21. [ARCH] Always fire webhook delivery when a real contact method is captured because Zapier is the preferred place to filter and route lead quality logic across firms.
 22. [ARCH] Always trigger webhook delivery from the current message when contact info appears there because message-level capture is more reliable than inferring freshness from the full transcript.
+23. [DATA] Always deduplicate the current user message from the server transcript when the client already sent it in conversation history because double-counting corrupts transcript payloads and contact extraction.
+24. [DATA] Always parse contact names case-insensitively because users often write `My name is ...` with capitalization that should still populate the lead record.

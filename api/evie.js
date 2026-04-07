@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
 
   const requestMeta = extractRequestMeta(body);
   const history = normalizeHistory(body.conversation_history);
-  const transcript = [...history, { role: "user", content: message }];
+  const transcript = appendCurrentUserMessage(history, message);
   const priorLead = extractLead(history, body.channel === "voice" ? "voice" : "chat");
   const lead = extractLead(transcript, body.channel === "voice" ? "voice" : "chat");
   const result = await buildReply(message, lead, transcript);
@@ -117,6 +117,19 @@ function normalizeHistory(history) {
       content: readString(entry?.content),
     }))
     .filter((entry) => entry.content);
+}
+
+function appendCurrentUserMessage(history, message) {
+  const lastEntry = history[history.length - 1];
+  if (
+    lastEntry &&
+    lastEntry.role === "user" &&
+    lastEntry.content.trim() === message.trim()
+  ) {
+    return history;
+  }
+
+  return [...history, { role: "user", content: message }];
 }
 
 function getPromptVersion() {
@@ -635,9 +648,9 @@ function detectContact(text) {
   const phone =
     text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0] || "";
   const explicitName =
-    text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/)?.[1] || "";
+    text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i)?.[1] || "";
   const leadingName =
-    text.match(/^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*,/)?.[1] || "";
+    text.match(/^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,.]/)?.[1] || "";
   const name = explicitName || leadingName;
   return { name, phone, email };
 }
