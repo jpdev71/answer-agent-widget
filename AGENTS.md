@@ -60,3 +60,4 @@ This file contains a growing ruleset that improves over time. **At session start
 22. [ARCH] Always trigger webhook delivery from the current message when contact info appears there because message-level capture is more reliable than inferring freshness from the full transcript.
 23. [DATA] Always deduplicate the current user message from the server transcript when the client already sent it in conversation history because double-counting corrupts transcript payloads and contact extraction.
 24. [DATA] Always parse contact names case-insensitively because users often write `My name is ...` with capitalization that should still populate the lead record.
+25. [DATA] Always prioritize contact-style names near phone and email over earlier conversational phrases because family-member wording like `I'm reaching out for my sister` can otherwise pollute the lead name field.
