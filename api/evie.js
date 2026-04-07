@@ -257,15 +257,7 @@ function shouldDeliverLead({ priorLead, lead, result }) {
     return false;
   }
 
-  const seemsViable =
-    result.qualificationPath === "qualified" ||
-    lead.follow_up_recommended;
-
-  if (lead.incident_state && lead.incident_state !== "Georgia" && result.qualificationPath !== "qualified") {
-    return false;
-  }
-
-  return seemsViable;
+  return true;
 }
 
 function hasDeliverableContact(lead) {
