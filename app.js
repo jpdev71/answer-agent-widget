@@ -7,58 +7,6 @@ const state = {
   hasRenderedWelcome: false,
 };
 
-const knowledgeBase = {
-  consultation:
-    "Yes. This demo firm offers free consultations and encourages potential clients to reach out promptly after an accident.",
-  location:
-    "This demo is modeled on a Georgia personal injury practice serving the Norcross area and nearby counties.",
-  practiceAreas:
-    "The firm handles personal injury matters such as car accidents, truck accidents, slip and falls, pedestrian injuries, motorcycle collisions, catastrophic injuries, nursing home abuse, and wrongful death matters.",
-  deadline:
-    "For demo purposes, the assistant explains that many Georgia personal injury claims have a two-year filing deadline, but visitors should speak with a lawyer quickly because exceptions can affect timing.",
-  value:
-    "Claim value depends on facts like medical bills, lost income, future care, pain and suffering, and how strongly liability can be proven.",
-  nextSteps:
-    "A helpful first step is to get medical care, preserve photos and records, avoid detailed insurer statements without counsel, and request a consultation with the firm.",
-  differentiators:
-    "This demo emphasizes attorney-led representation, experience dealing with insurers, trial readiness, and a relationship-focused approach rather than handing clients off to a generic case manager.",
-  disclaimer:
-    "This assistant is a demo and should not provide legal advice or promise outcomes. Urgent or high-stakes matters should be escalated to the firm directly.",
-};
-
-const promptResponses = [
-  {
-    match: ["free consultation", "consultation", "case review", "cost"],
-    response:
-      `${knowledgeBase.consultation} If you want, I can also help explain what information a firm usually asks for during an intake conversation.`,
-  },
-  {
-    match: ["what kinds of cases", "practice areas", "handle", "car accident", "truck accident", "slip and fall"],
-    response:
-      `${knowledgeBase.practiceAreas} If you tell me what happened, I can suggest which practice area best matches the issue.`,
-  },
-  {
-    match: ["how long", "deadline", "statute", "file a claim", "two years"],
-    response:
-      `${knowledgeBase.deadline} The safest guidance for a visitor is to contact the firm as soon as possible rather than waiting.`,
-  },
-  {
-    match: ["what should i do", "after a car accident", "after an accident", "next step"],
-    response:
-      `${knowledgeBase.nextSteps} If the visitor wants, the assistant can help prepare them for a consultation by organizing the timeline and injuries.`,
-  },
-  {
-    match: ["worth", "value", "settlement", "compensation"],
-    response:
-      `${knowledgeBase.value} A good assistant should avoid guessing a dollar figure and instead invite a lawyer review.`,
-  },
-  {
-    match: ["why choose", "why hire", "why your firm", "difference"],
-    response:
-      `${knowledgeBase.differentiators} That tone works well for a law-firm intake assistant because it is confident without sounding pushy.`,
-  },
-];
-
 const providers = {
   "evie-api": {
     label: "Evie API",
@@ -85,8 +33,9 @@ const providers = {
         return { text: payload.reply_text, meta: payload };
       } catch (error) {
         return {
-          text: buildDemoResponse(message),
-          meta: { fallback: true, error: error.message },
+          text:
+            "I'm having trouble reaching the full assistant right now. Please try again in a moment, or share your name, phone number, and email if you'd like the firm to follow up.",
+          meta: { fallback: true, error: error.message, response_source: "temporary_unavailable" },
         };
       }
     },
@@ -250,28 +199,6 @@ function ensureWelcomeMessage() {
   );
   state.hasRenderedWelcome = true;
 }
-
-function buildDemoResponse(message) {
-  const normalized = message.toLowerCase();
-  const matchedPrompt = promptResponses.find((entry) =>
-    entry.match.some((term) => normalized.includes(term)),
-  );
-
-  if (matchedPrompt) {
-    return matchedPrompt.response;
-  }
-
-  if (normalized.includes("phone") || normalized.includes("call")) {
-    return "This demo can surface a prominent call option for urgent matters, especially when the visitor seems ready to speak with the firm directly.";
-  }
-
-  if (normalized.includes("attorney") || normalized.includes("lawyer")) {
-    return `The assistant can explain that the firm emphasizes direct attorney involvement and experience dealing with insurers. ${knowledgeBase.disclaimer}`;
-  }
-
-  return "This demo assistant is designed to answer common personal injury questions, guide visitors toward a consultation, and avoid overpromising. A strong next step is to tune the responses around the firm's exact intake language and contact flow.";
-}
-
 function startBrowserRecognition() {
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition || null;

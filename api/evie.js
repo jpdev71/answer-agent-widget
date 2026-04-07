@@ -500,6 +500,22 @@ function detectEvidence(lower) {
   return evidence.join(", ");
 }
 
+function detectGoal(lower) {
+  if (/consultation|consult|case review|free review|talk to a lawyer|speak with a lawyer/.test(lower)) {
+    return "schedule_consultation";
+  }
+  if (/do i have a case|worth|value|compensation|settlement|should i sue/.test(lower)) {
+    return "case_evaluation";
+  }
+  if (/what happens|next step|what should i do|deadline|statute|insurance|adjuster/.test(lower)) {
+    return "legal_process_guidance";
+  }
+  if (/phone|call me|follow up|reach me/.test(lower)) {
+    return "request_follow_up";
+  }
+  return "general_information";
+}
+
 function buildSummary(input) {
   const parts = [];
   if (input.incidentType !== "unknown") parts.push(`Visitor described a ${input.incidentType.replace(/_/g, " ")}`);
