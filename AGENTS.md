@@ -47,3 +47,4 @@ This file contains a growing ruleset that improves over time. **At session start
 9. [ARCH] Never use the heuristic backend as a conversational fallback because a transparent temporary-unavailable response is better than a fake conversation that breaks trust.
 10. [CODE] Always verify that every backend helper referenced in production code is actually defined before deploying because a missing helper caused `/api/evie` to crash and masked the real API path.
 11. [UX] Never return browser-side demo responses when the live API fails because canned fallback copy hides production outages and makes debugging harder.
+12. [CODE] Always test the OpenAI conversation-history payload across multiple turns because a format that works on turn one can still break as soon as assistant history is included.

@@ -228,7 +228,7 @@ async function buildOpenAIReply(message, lead, transcript) {
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       instructions: buildOpenAIInstructions(lead),
-      input: transcriptToInputItems(transcript),
+      input: buildConversationInput(transcript),
       max_output_tokens: 700,
       text: {
         format: {
@@ -321,16 +321,24 @@ function buildOpenAIInstructions(lead) {
   ].join("\n\n");
 }
 
-function transcriptToInputItems(transcript) {
-  return transcript.map((entry) => ({
-    role: entry.role,
-    content: [
-      {
-        type: "input_text",
-        text: entry.content,
-      },
-    ],
-  }));
+function buildConversationInput(transcript) {
+  const formattedTranscript = transcript
+    .map((entry) => `${entry.role === "assistant" ? "Evie" : "User"}: ${entry.content}`)
+    .join("\n");
+
+  return [
+    {
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text:
+            "Continue this conversation as Evie. The transcript below is authoritative.\n\n" +
+            formattedTranscript,
+        },
+      ],
+    },
+  ];
 }
 
 function parseOpenAIStructuredResponse(payload) {
