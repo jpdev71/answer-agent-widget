@@ -51,6 +51,7 @@ module.exports = async function handler(req, res) {
   const result = await buildReply(message, lead, transcript);
   const transcriptWithReply = [...transcript, { role: "assistant", content: result.replyText }];
   const webhookDelivery = await maybeDeliverLead({
+    message,
     requestMeta,
     priorLead,
     lead,
@@ -209,13 +210,13 @@ function extractLead(transcript, channel) {
   };
 }
 
-async function maybeDeliverLead({ requestMeta, priorLead, lead, result, transcript }) {
+async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result, transcript }) {
   const webhookUrl = readString(process.env.LEAD_WEBHOOK_URL);
   if (!webhookUrl) {
     return { attempted: false, delivered: false, reason: "missing_webhook_url" };
   }
 
-  if (!shouldDeliverLead({ priorLead, lead, result })) {
+  if (!shouldDeliverLead({ message, priorLead, lead, result })) {
     return { attempted: false, delivered: false, reason: "conditions_not_met" };
   }
 
@@ -244,10 +245,14 @@ async function maybeDeliverLead({ requestMeta, priorLead, lead, result, transcri
   }
 }
 
-function shouldDeliverLead({ priorLead, lead, result }) {
+function shouldDeliverLead({ message, priorLead, lead, result }) {
+  const currentMessageContact = detectContact(message);
+  const hasContactInCurrentMessage = Boolean(
+    currentMessageContact.phone || currentMessageContact.email,
+  );
   const hasFreshContact =
-    !hasDeliverableContact(priorLead) &&
-    hasDeliverableContact(lead);
+    hasContactInCurrentMessage ||
+    (!hasDeliverableContact(priorLead) && hasDeliverableContact(lead));
 
   if (!hasFreshContact) {
     return false;

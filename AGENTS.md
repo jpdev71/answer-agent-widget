@@ -57,3 +57,4 @@ This file contains a growing ruleset that improves over time. **At session start
 19. [UX] Always require a short qualification step before sharing the consultation link on a cold request because contact information alone is not enough to justify scheduling.
 20. [ARCH] Always prefer a webhook handoff for lead delivery because Zapier will route Evie's captured data into spreadsheets and notifications across different firms.
 21. [ARCH] Always fire webhook delivery when a real contact method is captured because Zapier is the preferred place to filter and route lead quality logic across firms.
+22. [ARCH] Always trigger webhook delivery from the current message when contact info appears there because message-level capture is more reliable than inferring freshness from the full transcript.
