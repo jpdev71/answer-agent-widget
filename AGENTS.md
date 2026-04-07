@@ -54,3 +54,4 @@ This file contains a growing ruleset that improves over time. **At session start
 16. [UX] Always collect contact information before offering the consultation link because the firm will want a reachable qualified lead before scheduling.
 17. [UX] Never offer the consultation link without some qualification first because only stronger leads that match the firm's profile should be routed to consult scheduling.
 18. [UX] Never continue ordinary intake for a routine out-of-state matter after scope is clear because Evie should set expectations instead of dragging the user through unnecessary questions.
+19. [UX] Always require a short qualification step before sharing the consultation link on a cold request because contact information alone is not enough to justify scheduling.
