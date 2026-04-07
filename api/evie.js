@@ -534,6 +534,7 @@ function detectQualification(input) {
 
 function detectState(lower) {
   if (lower.includes("georgia") || /\bga\b/.test(lower)) return "Georgia";
+  if (/\batlanta\b/.test(lower)) return "Georgia";
   if (lower.includes("florida")) return "Florida";
   if (lower.includes("alabama")) return "Alabama";
   if (lower.includes("south carolina")) return "South Carolina";
@@ -543,8 +544,21 @@ function detectState(lower) {
 }
 
 function detectCity(text) {
-  const match = text.match(/\b(?:in|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,\s*(Georgia|GA|Florida|Alabama|Tennessee|South Carolina|North Carolina)\b/);
-  return match ? match[1] : "";
+  const withComma = text.match(/\b(?:in|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,\s*(Georgia|GA|Florida|Alabama|Tennessee|South Carolina|North Carolina)\b/);
+  if (withComma) {
+    return withComma[1];
+  }
+
+  const withoutComma = text.match(/\b(?:in|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(Georgia|GA|Florida|Alabama|Tennessee|South Carolina|North Carolina)\b/);
+  if (withoutComma) {
+    return withoutComma[1];
+  }
+
+  if (/\batlanta\b/i.test(text)) {
+    return "Atlanta";
+  }
+
+  return "";
 }
 
 function detectIncidentType(lower) {
@@ -563,7 +577,11 @@ function detectInjuries(lower) {
     ["broken wrist", /broken wrist|broke (?:my |a )?wrist/],
     ["broken arm", /broken arm|broke (?:my |an |a )?arm/],
     ["broken leg", /broken leg|broke (?:my |a )?leg/],
-    ["fracture", /fracture|fractured/],
+    ["fracture", /\bfracture\b/],
+    ["fractured arm", /fractured (?:my |an |a )?arm/],
+    ["fractured leg", /fractured (?:my |a )?leg/],
+    ["fractured ankle", /fractured (?:my |an |a )?ankle/],
+    ["sprained ankle", /sprained ankle|ankle sprain/],
     ["laceration", /laceration|lacerations/],
     ["cuts", /cuts|cut on my|cut on her|cut on his/],
     ["back pain", /back pain/],
@@ -571,12 +589,14 @@ function detectInjuries(lower) {
     ["brain injury", /brain injury|tbi/],
     ["concussion", /concussion/],
     ["deep cut", /deep cut/],
+    ["spinal injuries", /spinal injuries|spine injury|back injury/],
+    ["torn muscles", /torn muscles|muscle tear/],
   ];
   const injuries = patterns
     .filter(([, pattern]) => pattern.test(lower))
     .map(([label]) => label);
 
-  return injuries.join(", ");
+  return [...new Set(injuries)].join(", ");
 }
 
 function detectTreatment(lower) {
