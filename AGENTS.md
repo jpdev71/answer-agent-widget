@@ -75,3 +75,4 @@ This file contains a growing ruleset that improves over time. **At session start
 37. [DATA] Never treat consent replies like `Okay`, `Sure`, or `Yes` as names because users often confirm contact collection before actually giving their name.
 38. [ARCH] Always prefer transcript-first webhook delivery over strict live-parser gating because downstream automation can analyze the full conversation more reliably than brittle in-chat extraction.
 39. [ARCH] Always trigger transcript-first webhooks on meaningful lead-state changes rather than every assistant turn because Zapier needs a compact event stream, not a flood of duplicate snapshots.
+40. [DATA] Never treat marital-status answers like `Separated`, `Divorced`, or `Single` as names because those one-word intake replies should not start contact capture.
