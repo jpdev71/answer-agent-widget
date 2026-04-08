@@ -212,23 +212,36 @@ async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result,
 }
 
 function shouldDeliverLead({ message, priorLead, lead, result, firm }) {
-  const hasRequiredLeadData = hasRequiredWebhookFields(lead, firm);
-  const priorHadRequiredLeadData = hasRequiredWebhookFields(priorLead, firm);
-  const becameWebhookReady = !priorHadRequiredLeadData && hasRequiredLeadData;
+  const deliveryMode = getWebhookDeliveryMode(firm);
 
   if (result.responseSource !== "openai") {
     return false;
   }
 
-  if (!becameWebhookReady) {
-    return false;
+  switch (deliveryMode) {
+    case "every_openai_turn":
+      return true;
+    case "contact_update":
+      return hasDeliverableContact(lead) && didLeadContactChange(priorLead, lead);
+    case "required_fields_ready":
+    default: {
+      const hasRequiredLeadData = hasRequiredWebhookFields(lead, firm);
+      const priorHadRequiredLeadData = hasRequiredWebhookFields(priorLead, firm);
+      return !priorHadRequiredLeadData && hasRequiredLeadData;
+    }
   }
-
-  return true;
 }
 
 function hasDeliverableContact(lead) {
   return Boolean(lead?.visitor_phone || lead?.visitor_email);
+}
+
+function didLeadContactChange(priorLead, lead) {
+  return ["visitor_name", "visitor_phone", "visitor_email"].some((field) => {
+    const previousValue = typeof priorLead?.[field] === "string" ? priorLead[field].trim() : "";
+    const currentValue = typeof lead?.[field] === "string" ? lead[field].trim() : "";
+    return previousValue !== currentValue;
+  });
 }
 
 function hasRequiredWebhookFields(lead, firm) {
@@ -253,6 +266,15 @@ function getRequiredWebhookFields(firm) {
   }
 
   return ["visitor_name", "visitor_phone", "visitor_email"];
+}
+
+function getWebhookDeliveryMode(firm) {
+  const configuredMode = readString(firm?.webhook?.deliveryMode);
+  if (configuredMode) {
+    return configuredMode;
+  }
+
+  return "required_fields_ready";
 }
 
 function getMissingRequiredWebhookFields(lead, firm) {
@@ -307,6 +329,11 @@ function buildLeadWebhookPayload({ requestMeta, lead, result, transcript, firm }
       lead_source: firm.webhook.leadSource || lead.lead_source,
       page_url: requestMeta.pageUrl,
       page_title: requestMeta.pageTitle,
+    },
+    delivery: {
+      mode: getWebhookDeliveryMode(firm),
+      has_deliverable_contact: hasDeliverableContact(lead),
+      required_fields_complete: hasRequiredWebhookFields(lead, firm),
     },
     routing: {
       qualification_path: result.qualificationPath,

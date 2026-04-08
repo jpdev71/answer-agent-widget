@@ -27,6 +27,7 @@ module.exports = {
   webhook: {
     eventType: "lead.captured",
     leadSource: "website_widget",
+    deliveryMode: "every_openai_turn",
     requiredFields: ["visitor_name", "visitor_phone", "visitor_email"],
   },
   qualification: {

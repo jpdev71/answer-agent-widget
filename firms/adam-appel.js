@@ -30,6 +30,7 @@ module.exports = {
   webhook: {
     eventType: "lead.captured",
     leadSource: "website_widget",
+    deliveryMode: "every_openai_turn",
   },
   qualification: {
     qualifiedStates: ["Georgia"],
