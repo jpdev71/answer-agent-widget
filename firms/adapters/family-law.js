@@ -209,11 +209,59 @@ function detectBusinessInterests(lower) {
 }
 
 function detectPreferredCallbackTime(text) {
-  const explicit =
-    text.match(/best time to call me is\s*([^.!\n]+)/i)?.[1] ||
-    text.match(/(?:best time(?: to call)?|preferred callback time)\s+(?:is|would be)?\s*([^.!\n]+)/i)?.[1] ||
-    text.match(/call me\s+(?:after|around|before)\s*([^.!\n]+)/i)?.[1];
-  return explicit ? explicit.trim() : "";
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i];
+    const explicit =
+      line.match(/best time to call me is\s*([^.!\n]+)/i)?.[1] ||
+      line.match(/(?:best time(?: to call)?|preferred callback time)\s+(?:is|would be)?\s*([^.!\n]+)/i)?.[1] ||
+      line.match(/call me\s+(?:after|around|before)\s*([^.!\n]+)/i)?.[1];
+
+    if (explicit) {
+      return explicit.trim();
+    }
+
+    const naturalPreference = extractCallbackPreference(line);
+    if (naturalPreference) {
+      return naturalPreference;
+    }
+  }
+
+  return "";
+}
+
+function extractCallbackPreference(line) {
+  if (!line || /@/.test(line) || /\b\d{3}[\s.)-]?\d{3}[\s.-]?\d{4}\b/.test(line)) {
+    return "";
+  }
+
+  const cleanedLine = line.replace(/^[,.\s]+|[,.\s]+$/g, "");
+  const anchoredMatch = cleanedLine.match(
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|tonight|weekday|weekend)\b.*$/i,
+  );
+  if (anchoredMatch) {
+    return anchoredMatch[0].trim();
+  }
+
+  const timeWindowMatch = cleanedLine.match(
+    /\b(?:this\s+)?(?:morning|afternoon|evening)\b(?:.*\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b)?/i,
+  );
+  if (timeWindowMatch) {
+    return timeWindowMatch[0].trim();
+  }
+
+  const timeOnlyMatch = cleanedLine.match(
+    /\b(?:after|around|before)?\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i,
+  );
+  if (timeOnlyMatch) {
+    return timeOnlyMatch[0].trim();
+  }
+
+  return "";
 }
 
 function detectContact(text) {
