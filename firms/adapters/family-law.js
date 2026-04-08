@@ -1,3 +1,5 @@
+const { parseContact } = require("../../lib/contact-parser");
+
 function createLead({ transcript, channel, firm }) {
   const userText = transcript
     .filter((entry) => entry.role === "user")
@@ -215,23 +217,7 @@ function detectPreferredCallbackTime(text) {
 }
 
 function detectContact(text) {
-  const email = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0] || "";
-  const phone =
-    text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0] || "";
-  const contactLineName =
-    text.match(/(?:^|[.!?\n]\s*)(?:certainly\.?\s*)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,.\n]\s*(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}[\s,.\n]+[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[1] || "";
-  const explicitName =
-    text.match(/(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/i)?.[1] || "";
-  const leadingName =
-    text.match(/^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*[,.]/)?.[1] || "";
-  const name = sanitizeDetectedName(contactLineName || explicitName || leadingName);
-  return { name, phone, email };
-}
-
-function sanitizeDetectedName(name) {
-  return String(name || "")
-    .replace(/^(?:my name is|i am|i'm)\s+/i, "")
-    .trim();
+  return parseContact(text);
 }
 
 function buildSummary(input) {

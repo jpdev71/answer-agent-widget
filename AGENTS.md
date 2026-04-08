@@ -62,3 +62,5 @@ This file contains a growing ruleset that improves over time. **At session start
 24. [DATA] Always parse contact names case-insensitively because users often write `My name is ...` with capitalization that should still populate the lead record.
 25. [DATA] Always prioritize contact-style names near phone and email over earlier conversational phrases because family-member wording like `I'm reaching out for my sister` can otherwise pollute the lead name field.
 26. [DATA] Always strip leading declaration phrases like `My name is` from captured contact names because intake messages often present contact details in full sentences and the stored name should contain only the person's actual name.
+27. [DATA] Always reject fallback name candidates that contain ordinary sentence words because a blank name is safer than storing a conversational fragment like `worried about how that might impact` as the lead's name.
+28. [DATA] Always preserve a clean earlier standalone name answer across later turns because users often provide their name first and contact details afterward.
