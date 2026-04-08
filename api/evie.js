@@ -255,6 +255,45 @@ function getRequiredWebhookFields(firm) {
   return ["visitor_name", "visitor_phone", "visitor_email"];
 }
 
+function getMissingRequiredWebhookFields(lead, firm) {
+  return getRequiredWebhookFields(firm).filter((field) => {
+    const value = lead?.[field];
+    return typeof value === "string" ? !value.trim() : !value;
+  });
+}
+
+function shouldForceRequiredFieldFollowUp(lead, missingRequiredFields) {
+  if (!lead?.follow_up_recommended) {
+    return false;
+  }
+
+  if (missingRequiredFields.length === 0) {
+    return false;
+  }
+
+  return Boolean(lead.visitor_name || lead.visitor_phone || lead.visitor_email);
+}
+
+function buildRequiredFieldFollowUpReply(lead, field) {
+  const firstName = typeof lead?.visitor_name === "string" && lead.visitor_name.trim()
+    ? lead.visitor_name.trim().split(/\s+/)[0]
+    : "";
+  const nameSuffix = firstName ? `, ${firstName}` : "";
+
+  switch (field) {
+    case "visitor_email":
+      return `Thank you${nameSuffix}. Could you also share your email address? That will help the firm follow up with you.`;
+    case "visitor_phone":
+      return `Thank you${nameSuffix}. Could you also share the best phone number to reach you?`;
+    case "visitor_name":
+      return "Thank you. Could you also share your full name so the firm can note it correctly?";
+    case "preferred_callback_time":
+      return `Thank you${nameSuffix}. What would be the best time for a follow-up call?`;
+    default:
+      return `Thank you${nameSuffix}. Could you also share that last detail so the firm can follow up?`;
+  }
+}
+
 function buildLeadWebhookPayload({ requestMeta, lead, result, transcript, firm }) {
   return {
     event_type: firm.webhook.eventType,
@@ -387,19 +426,26 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
 
   const payload = await response.json();
   const parsed = parseOpenAIStructuredResponse(payload);
+  const missingRequiredFields = getMissingRequiredWebhookFields(lead, firm);
 
   const offerConsultLink = parsed.offer_consult_link;
   const cleanReplyText = sanitizeReplyText(parsed.reply_text);
   const safeOfferConsultLink = Boolean(firm.consult?.enabled && offerConsultLink);
-  const replyText =
+  let replyText =
     safeOfferConsultLink && !cleanReplyText.includes(firm.consult.link)
       ? `${cleanReplyText} ${firm.consult.link}`
       : cleanReplyText;
+  let requestContactCapture = parsed.request_contact_capture;
+
+  if (shouldForceRequiredFieldFollowUp(lead, missingRequiredFields)) {
+    replyText = buildRequiredFieldFollowUpReply(lead, missingRequiredFields[0]);
+    requestContactCapture = true;
+  }
 
   return {
     replyText,
     qualificationPath: parsed.qualification_path,
-    requestContactCapture: parsed.request_contact_capture,
+    requestContactCapture,
     offerConsultLink: safeOfferConsultLink,
     leadFieldsNeeded: parsed.lead_fields_needed,
     responseSource: "openai",
