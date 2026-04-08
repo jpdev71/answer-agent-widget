@@ -1,0 +1,124 @@
+const path = require("path");
+
+module.exports = {
+  id: "dermer-appel-ruder",
+  name: "Dermer Appel Ruder",
+  agent: {
+    name: "Evie",
+    welcomeMessage:
+      "Hi, I'm Evie. You can ask me questions about personal injury matters, consultations, or next steps. Use Chat or Voice to get started.",
+  },
+  practice: {
+    regionsServed: ["Georgia"],
+    practiceAreas: ["personal_injury"],
+    outOfStatePolicy: "exception_only",
+    answerStyle: "helpful_first",
+    locationAliases: {
+      "\\bga\\b": "Georgia",
+      "\\batlanta\\b": "Georgia",
+    },
+    cityAliases: {
+      "\\batlanta\\b": "Atlanta",
+    },
+  },
+  consult: {
+    enabled: true,
+    link: "https://calendly.com/social-amplifier/dermer-appel-ruder?month=2026-04",
+    requiresQualification: true,
+    requiresContactCapture: true,
+  },
+  webhook: {
+    eventType: "lead.captured",
+    leadSource: "website_widget",
+  },
+  qualification: {
+    qualifiedStates: ["Georgia"],
+    scoreThreshold: 4,
+  },
+  intake: {
+    adapterPath: path.join(process.cwd(), "firms", "adapters", "personal-injury.js"),
+    responseLeadFieldsNeeded: [
+      "visitor_name",
+      "visitor_phone",
+      "visitor_email",
+      "incident_state",
+      "incident_type",
+      "injury_summary",
+      "medical_treatment_status",
+    ],
+  },
+  prompt: {
+    runtimeRules: [
+      "Use grounded public firm facts when the user asks about the firm, attorneys, office location, consultation process, fees, or practice areas.",
+      "If a firm-specific detail is not present in grounded content, say you do not want to guess and offer to help with the next step.",
+      "Never use generic assistant filler like 'How can I assist you today?' unless the user is completely generic and even then keep it in Evie's law-firm voice.",
+      "If the user provides a location outside Georgia, acknowledge that fact explicitly and adjust the response accordingly.",
+      "If the incident is outside Georgia, gently explain that the firm reviews Georgia matters and do not push contact capture unless something else sounds unusually compelling.",
+      "If the matter is a routine out-of-state personal injury matter, do not continue ordinary intake after the scope issue is clear.",
+      "Only offer the consultation link after the matter appears likely qualified and after contact information has been collected or politely attempted.",
+      "Do not provide the consultation link in the same reply where you first ask for contact information.",
+      "Do not offer the consultation link immediately just because the user asks for it.",
+      "If the user asks for the consultation link before describing the matter, ask a short qualification question sequence first.",
+      "If the matter is weaker or unclear, stay helpful and say the firm can review.",
+    ],
+    extraInstructions: [],
+  },
+  grounding: {
+    allowedSourceTypes: ["markdown_file", "text_file", "inline_text"],
+    sources: [
+      {
+        id: "agent-prompt",
+        label: "Agent prompt",
+        type: "markdown_file",
+        usage: "system_behavior",
+        path: path.join(process.cwd(), "prompts", "evie-law-firm-agent-prompt.md"),
+        required: true,
+      },
+      {
+        id: "intake-schema",
+        label: "Intake schema",
+        type: "markdown_file",
+        usage: "lead_schema",
+        path: path.join(process.cwd(), "prompts", "evie-intake-schema.md"),
+        required: true,
+      },
+      {
+        id: "sample-conversations",
+        label: "Sample conversations",
+        type: "markdown_file",
+        usage: "tone_examples",
+        path: path.join(process.cwd(), "prompts", "evie-sample-conversations.md"),
+        required: true,
+      },
+      {
+        id: "homepage-facts",
+        label: "Homepage facts",
+        type: "markdown_file",
+        usage: "public_website_summary",
+        path: path.join(process.cwd(), "prompts", "adam-appel-homepage.md"),
+        required: true,
+      },
+      {
+        id: "about-facts",
+        label: "About facts",
+        type: "markdown_file",
+        usage: "public_about_page",
+        path: path.join(process.cwd(), "prompts", "adam-appel-about.md"),
+        required: true,
+      },
+      {
+        id: "contact-facts",
+        label: "Contact facts",
+        type: "markdown_file",
+        usage: "public_contact_page",
+        path: path.join(process.cwd(), "prompts", "adam-appel-contact.md"),
+        required: true,
+      },
+    ],
+  },
+  observability: {
+    includeConfigSummary: true,
+    includeGroundingSummary: true,
+    includeValidationWarnings: true,
+  },
+};

@@ -5,6 +5,8 @@ const state = {
   recognition: null,
   conversationHistory: [],
   hasRenderedWelcome: false,
+  welcomeMessage:
+    "Hi, I'm Evie. You can ask me questions about personal injury matters, consultations, or next steps. Use Chat or Voice to get started.",
 };
 
 const providers = {
@@ -75,6 +77,7 @@ jumpToWidgetButton.addEventListener("click", () => {
 
 modeChatButton.addEventListener("click", () => setMode("chat"));
 modeVoiceButton.addEventListener("click", () => setMode("voice"));
+loadWidgetConfig();
 
 composer.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -209,10 +212,24 @@ function ensureWelcomeMessage() {
     return;
   }
 
-  addAgentMessage(
-    "Hi, I'm Evie. You can ask me questions about personal injury matters, consultations, or next steps. Use Chat or Voice to get started."
-  );
+  addAgentMessage(state.welcomeMessage);
   state.hasRenderedWelcome = true;
+}
+
+async function loadWidgetConfig() {
+  try {
+    const response = await fetch("/api/evie");
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = await response.json();
+    if (typeof payload.welcome_message === "string" && payload.welcome_message.trim()) {
+      state.welcomeMessage = payload.welcome_message.trim();
+    }
+  } catch {
+    // Keep the baked-in welcome copy if config loading fails.
+  }
 }
 function startBrowserRecognition() {
   const SpeechRecognition =

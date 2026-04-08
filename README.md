@@ -24,6 +24,11 @@ Vercel-ready prototype for a lower-left website widget that acts like a personal
 - `styles.css` - layout, branding, and responsive styling
 - `app.js` - widget logic, API client, and browser voice placeholder
 - `api/evie.js` - server endpoint for Evie prompt behavior and structured intake output
+- `firms/default.js` - default firm alias used by the app at runtime
+- `firms/adam-appel.js` - current Adam Appel / Dermer Appel Ruder firm implementation
+- `firms/adapters/personal-injury.js` - current PI-specific lead extraction and qualification adapter
+- `lib/firm-config.js` - shared firm-config loading, grounding assembly, and validation
+- `docs/multi-firm-contract.md` - notes on shared vs firm-specific structure for multi-firm support
 - `vercel.json` - simple Vercel config
 
 ## Deploy
@@ -80,8 +85,10 @@ Recommended environment variables:
 
 - `OPENAI_API_KEY`
 - `LEAD_WEBHOOK_URL`
+- `FIRM_PROFILE` (`default`, `adam-appel`, or `thacker-sleight`)
 - `FIRM_ID` (optional)
 - `FIRM_NAME` (optional)
+- `CONSULT_LINK` (optional)
 
 Example webhook payload:
 
@@ -127,6 +134,12 @@ Example webhook payload:
 ## Next recommended step
 
 Set `LEAD_WEBHOOK_URL`, connect the payload to Zapier, and map the fields into the firm's spreadsheet and notification flow.
+
+## Multi-firm scaffold
+
+The app now has a reusable multi-firm layer. The runtime points at `firms/default.js`, which currently aliases the Adam Appel / Dermer Appel Ruder implementation in `firms/adam-appel.js`. Firm identity, consult policy, grounding sources, and adapter selection now live in the firm config and are validated by `lib/firm-config.js`.
+
+Grounding is intentionally lightweight for now: a firm can point at approved markdown/text sources or inline text blocks, and the API reports validation warnings plus grounding metadata in its response for easier onboarding and debugging. Lead extraction and qualification are now adapter-driven so non-Georgia and non-PI firms are no longer blocked on the shared API shape.
 
 ## Demo content note
 

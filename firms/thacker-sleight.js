@@ -1,0 +1,123 @@
+const path = require("path");
+
+module.exports = {
+  id: "thacker-sleight",
+  name: "Thacker Sleight",
+  agent: {
+    name: "Evie",
+    welcomeMessage:
+      "Hi, I'm Evie. I can help answer questions about Thacker Sleight's family law services in Michigan and gather a few details if you'd like the firm to review your situation.",
+  },
+  practice: {
+    regionsServed: ["Michigan"],
+    practiceAreas: ["family_law"],
+    outOfStatePolicy: "michigan_only",
+    answerStyle: "helpful_first",
+    locationAliases: {
+      "\\bmi\\b": "Michigan",
+      "\\bgrand rapids\\b": "Michigan",
+    },
+  },
+  consult: {
+    enabled: false,
+    link: "",
+    requiresQualification: false,
+    requiresContactCapture: true,
+  },
+  webhook: {
+    eventType: "lead.captured",
+    leadSource: "website_widget",
+  },
+  qualification: {
+    qualifiedStates: ["Michigan"],
+    scoreThreshold: 4,
+    paths: ["qualified", "review"],
+  },
+  intake: {
+    adapterPath: path.join(process.cwd(), "firms", "adapters", "family-law.js"),
+    responseLeadFieldsNeeded: [
+      "visitor_name",
+      "visitor_phone",
+      "visitor_email",
+      "preferred_callback_time",
+      "matter_state",
+      "marital_status",
+      "children_involved",
+      "asset_worth",
+      "urgency_level",
+    ],
+  },
+  prompt: {
+    runtimeRules: [
+      "Use grounded public firm facts when the user asks about the firm, attorneys, office location, practice areas, or contact process.",
+      "If a firm-specific detail is not present in grounded content, say you do not want to guess and offer to help with the next step.",
+      "Be especially helpful with general questions about divorce, custody, support, parenting time, business valuation, property division, protective orders, and related Michigan family law processes.",
+      "If the matter appears outside Michigan, gently explain that the firm is being tested here for Michigan matters and avoid over-qualifying the lead.",
+      "Do not mention any retainer amount, hourly rate, or pricing unless the firm has explicitly provided that as approved grounding.",
+      "Do not offer a consultation link. This firm does not use self-serve scheduling in this test.",
+      "For stronger matters, explain that the attorneys can review the details and be in touch if there appears to be a fit.",
+      "Ask for contact details and preferred callback time only after being helpful first and gathering a few key facts.",
+      "Infer sophistication and fit gently from the facts instead of bluntly interrogating the visitor about budget.",
+      "If the matter seems outside the firm's public practice areas, answer politely and explain that the firm can review and reach out if appropriate.",
+    ],
+    extraInstructions: [],
+  },
+  grounding: {
+    allowedSourceTypes: ["markdown_file", "text_file", "inline_text"],
+    sources: [
+      {
+        id: "shared-behavior",
+        label: "Shared Evie behavior",
+        type: "markdown_file",
+        usage: "system_behavior",
+        path: path.join(process.cwd(), "prompts", "evie-law-firm-agent-prompt.md"),
+        required: true,
+      },
+      {
+        id: "website-overview",
+        label: "Website overview",
+        type: "markdown_file",
+        usage: "public_website_summary",
+        path: path.join(process.cwd(), "prompts", "thacker-sleight-website-summary.md"),
+        required: true,
+      },
+      {
+        id: "practice-areas",
+        label: "Practice areas",
+        type: "markdown_file",
+        usage: "public_practice_areas",
+        path: path.join(process.cwd(), "prompts", "thacker-sleight-practice-areas.md"),
+        required: true,
+      },
+      {
+        id: "ideal-client-note",
+        label: "Ideal client note",
+        type: "markdown_file",
+        usage: "internal_positioning_note",
+        path: path.join(process.cwd(), "prompts", "thacker-sleight-ideal-client.md"),
+        required: true,
+      },
+      {
+        id: "about-facts",
+        label: "About facts",
+        type: "markdown_file",
+        usage: "public_about_page",
+        path: path.join(process.cwd(), "prompts", "thacker-sleight-about.md"),
+        required: true,
+      },
+      {
+        id: "contact-facts",
+        label: "Contact facts",
+        type: "markdown_file",
+        usage: "public_contact_page",
+        path: path.join(process.cwd(), "prompts", "thacker-sleight-contact.md"),
+        required: true,
+      },
+    ],
+  },
+  observability: {
+    includeConfigSummary: true,
+    includeGroundingSummary: true,
+    includeValidationWarnings: true,
+  },
+};
