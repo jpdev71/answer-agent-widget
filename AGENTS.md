@@ -69,3 +69,5 @@ This file contains a growing ruleset that improves over time. **At session start
 31. [UX] Always keep Evie in contact-collection mode until required follow-up fields are complete because she should not promise that the firm will reach out while a required email, phone, name, or callback field is still missing.
 32. [DATA] Always reject greeting-style phrases like `Hi Evie` or `Hello there` as names because opener text should never start contact-capture mode.
 33. [DATA] Always parse natural callback answers like `Friday at 3pm` or `tomorrow afternoon` because users often answer scheduling questions conversationally instead of with labelled phrases.
+34. [DATA] Never treat bare city/state answers like `Detroit MI` as names because location replies are common during intake and a blank name is safer than premature contact capture.
+35. [DATA] Always require standalone name-only answers to visually look like names because short conversational fragments like `Probably quick` should not start contact capture.
