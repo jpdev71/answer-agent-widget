@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const fs = require("fs");
 const { parseContact } = require("../lib/contact-parser");
 const { buildGroundingBundle, getFirmRuntimeConfig } = require("../lib/firm-config");
@@ -181,16 +182,19 @@ async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result,
     return { attempted: false, delivered: false, reason: "missing_webhook_url" };
   }
 
-  if (!shouldDeliverLead({ message, priorLead, lead, result, firm })) {
-    return { attempted: false, delivered: false, reason: "conditions_not_met" };
+  const deliveryDecision = getWebhookDeliveryDecision({ message, priorLead, lead, result, firm });
+  if (!deliveryDecision.shouldDeliver) {
+    return { attempted: false, delivered: false, reason: deliveryDecision.reason || "conditions_not_met" };
   }
 
   const payload = buildLeadWebhookPayload({
     requestMeta,
     lead,
+    priorLead,
     result,
     transcript,
     firm,
+    deliveryDecision,
   });
 
   try {
@@ -211,23 +215,26 @@ async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result,
   }
 }
 
-function shouldDeliverLead({ message, priorLead, lead, result, firm }) {
+function getWebhookDeliveryDecision({ message, priorLead, lead, result, firm }) {
   const deliveryMode = getWebhookDeliveryMode(firm);
 
   if (result.responseSource !== "openai") {
-    return false;
+    return { shouldDeliver: false, reason: "non_openai_response" };
   }
 
   switch (deliveryMode) {
     case "every_openai_turn":
-      return true;
+      return { shouldDeliver: true, reason: "openai_turn" };
     case "contact_update":
-      return hasDeliverableContact(lead) && didLeadContactChange(priorLead, lead);
+      return getContactUpdateDecision(priorLead, lead, firm);
     case "required_fields_ready":
     default: {
       const hasRequiredLeadData = hasRequiredWebhookFields(lead, firm);
       const priorHadRequiredLeadData = hasRequiredWebhookFields(priorLead, firm);
-      return !priorHadRequiredLeadData && hasRequiredLeadData;
+      return {
+        shouldDeliver: !priorHadRequiredLeadData && hasRequiredLeadData,
+        reason: !priorHadRequiredLeadData && hasRequiredLeadData ? "required_fields_ready" : "conditions_not_met",
+      };
     }
   }
 }
@@ -236,12 +243,57 @@ function hasDeliverableContact(lead) {
   return Boolean(lead?.visitor_phone || lead?.visitor_email);
 }
 
-function didLeadContactChange(priorLead, lead) {
-  return ["visitor_name", "visitor_phone", "visitor_email"].some((field) => {
-    const previousValue = typeof priorLead?.[field] === "string" ? priorLead[field].trim() : "";
-    const currentValue = typeof lead?.[field] === "string" ? lead[field].trim() : "";
-    return previousValue !== currentValue;
-  });
+function getContactUpdateDecision(priorLead, lead, firm) {
+  const currentState = buildDeliveryState(lead, firm);
+  const previousState = buildDeliveryState(priorLead, firm);
+
+  if (!currentState.hasDeliverableContact) {
+    return { shouldDeliver: false, reason: "no_deliverable_contact" };
+  }
+
+  if (!previousState.hasDeliverableContact) {
+    return { shouldDeliver: true, reason: "first_contact_captured" };
+  }
+
+  if (currentState.contactFingerprint !== previousState.contactFingerprint) {
+    return { shouldDeliver: true, reason: "contact_fields_changed" };
+  }
+
+  if (
+    currentState.qualificationPath &&
+    currentState.qualificationPath !== previousState.qualificationPath
+  ) {
+    return { shouldDeliver: true, reason: "qualification_changed" };
+  }
+
+  if (currentState.requiredFieldsComplete && !previousState.requiredFieldsComplete) {
+    return { shouldDeliver: true, reason: "required_fields_completed" };
+  }
+
+  return { shouldDeliver: false, reason: "no_meaningful_lead_change" };
+}
+
+function buildDeliveryState(lead, firm) {
+  const contactSnapshot = {
+    visitor_name: normalizeLeadValue(lead?.visitor_name),
+    visitor_phone: normalizeLeadValue(lead?.visitor_phone),
+    visitor_email: normalizeLeadValue(lead?.visitor_email),
+  };
+
+  return {
+    hasDeliverableContact: Boolean(contactSnapshot.visitor_phone || contactSnapshot.visitor_email),
+    contactFingerprint: buildHash(contactSnapshot),
+    qualificationPath: normalizeLeadValue(lead?.qualification_path),
+    requiredFieldsComplete: hasRequiredWebhookFields(lead, firm),
+  };
+}
+
+function normalizeLeadValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function buildHash(value) {
+  return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
 function hasRequiredWebhookFields(lead, firm) {
@@ -316,12 +368,29 @@ function buildRequiredFieldFollowUpReply(lead, field) {
   }
 }
 
-function buildLeadWebhookPayload({ requestMeta, lead, result, transcript, firm }) {
+function buildLeadWebhookPayload({ requestMeta, lead, priorLead, result, transcript, firm, deliveryDecision }) {
+  const currentDeliveryState = buildDeliveryState(lead, firm);
+  const previousDeliveryState = buildDeliveryState(priorLead, firm);
+  const transcriptFingerprint = buildHash(
+    transcript.map((entry) => `${entry.role}:${entry.content}`).join("\n"),
+  );
+  const lastUserMessage = [...transcript].reverse().find((entry) => entry.role === "user")?.content || "";
+  const eventId = buildHash({
+    session_id: requestMeta.sessionId || "no-session",
+    firm_id: firm.id,
+    reason: deliveryDecision.reason,
+    lead_hash: currentDeliveryState.contactFingerprint,
+    qualification_path: currentDeliveryState.qualificationPath,
+    transcript_hash: transcriptFingerprint,
+  });
+
   return {
     event_type: firm.webhook.eventType,
+    event_id: eventId,
     delivered_at: new Date().toISOString(),
     firm_id: firm.id,
     firm_name: firm.name,
+    firm_profile: firm.id,
     agent_name: lead.agent_name,
     session_id: requestMeta.sessionId,
     source: {
@@ -332,8 +401,14 @@ function buildLeadWebhookPayload({ requestMeta, lead, result, transcript, firm }
     },
     delivery: {
       mode: getWebhookDeliveryMode(firm),
-      has_deliverable_contact: hasDeliverableContact(lead),
-      required_fields_complete: hasRequiredWebhookFields(lead, firm),
+      trigger_reason: deliveryDecision.reason,
+      has_deliverable_contact: currentDeliveryState.hasDeliverableContact,
+      required_fields_complete: currentDeliveryState.requiredFieldsComplete,
+      lead_fingerprint: currentDeliveryState.contactFingerprint,
+      prior_lead_fingerprint: previousDeliveryState.contactFingerprint,
+      conversation_hash: transcriptFingerprint,
+      conversation_turn_index: transcript.length,
+      last_user_message: lastUserMessage,
     },
     routing: {
       qualification_path: result.qualificationPath,

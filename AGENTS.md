@@ -74,3 +74,4 @@ This file contains a growing ruleset that improves over time. **At session start
 36. [UX] Never ask Thacker Sleight leads for preferred callback time during this test because simpler name-phone-email handoff is more important than extra scheduling detail right now.
 37. [DATA] Never treat consent replies like `Okay`, `Sure`, or `Yes` as names because users often confirm contact collection before actually giving their name.
 38. [ARCH] Always prefer transcript-first webhook delivery over strict live-parser gating because downstream automation can analyze the full conversation more reliably than brittle in-chat extraction.
+39. [ARCH] Always trigger transcript-first webhooks on meaningful lead-state changes rather than every assistant turn because Zapier needs a compact event stream, not a flood of duplicate snapshots.
