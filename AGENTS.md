@@ -71,3 +71,4 @@ This file contains a growing ruleset that improves over time. **At session start
 33. [DATA] Always parse natural callback answers like `Friday at 3pm` or `tomorrow afternoon` because users often answer scheduling questions conversationally instead of with labelled phrases.
 34. [DATA] Never treat bare city/state answers like `Detroit MI` as names because location replies are common during intake and a blank name is safer than premature contact capture.
 35. [DATA] Always require standalone name-only answers to visually look like names because short conversational fragments like `Probably quick` should not start contact capture.
+36. [UX] Never ask Thacker Sleight leads for preferred callback time during this test because simpler name-phone-email handoff is more important than extra scheduling detail right now.
