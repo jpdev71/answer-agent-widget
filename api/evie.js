@@ -212,25 +212,15 @@ async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result,
 }
 
 function shouldDeliverLead({ message, priorLead, lead, result, firm }) {
-  const currentMessageContact = detectContact(message);
-  const hasContactInCurrentMessage = Boolean(
-    currentMessageContact.phone || currentMessageContact.email,
-  );
   const hasRequiredLeadData = hasRequiredWebhookFields(lead, firm);
   const priorHadRequiredLeadData = hasRequiredWebhookFields(priorLead, firm);
-  const hasFreshContact =
-    hasContactInCurrentMessage ||
-    (!hasDeliverableContact(priorLead) && hasDeliverableContact(lead));
-
-  if (!hasFreshContact) {
-    return false;
-  }
+  const becameWebhookReady = !priorHadRequiredLeadData && hasRequiredLeadData;
 
   if (result.responseSource !== "openai") {
     return false;
   }
 
-  if (!hasRequiredLeadData || priorHadRequiredLeadData) {
+  if (!becameWebhookReady) {
     return false;
   }
 
