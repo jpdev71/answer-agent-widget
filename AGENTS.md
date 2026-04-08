@@ -67,3 +67,4 @@ This file contains a growing ruleset that improves over time. **At session start
 29. [DATA] Always parse a clean name fragment that appears before an email or phone on the same line because users often send `Name, email` or `Name, phone` in one turn and that should still populate the lead correctly.
 30. [ARCH] Always trigger the webhook when a lead becomes fully ready for handoff, even if the final required field is not phone or email, because some firms complete intake with callback preferences or other last-step fields on a later turn.
 31. [UX] Always keep Evie in contact-collection mode until required follow-up fields are complete because she should not promise that the firm will reach out while a required email, phone, name, or callback field is still missing.
+32. [DATA] Always reject greeting-style phrases like `Hi Evie` or `Hello there` as names because opener text should never start contact-capture mode.
