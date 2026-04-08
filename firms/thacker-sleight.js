@@ -27,6 +27,12 @@ module.exports = {
   webhook: {
     eventType: "lead.captured",
     leadSource: "website_widget",
+    requiredFields: [
+      "visitor_name",
+      "visitor_phone",
+      "visitor_email",
+      "preferred_callback_time",
+    ],
   },
   qualification: {
     qualifiedStates: ["Michigan"],
@@ -59,6 +65,9 @@ module.exports = {
       "Ask for contact details and preferred callback time only after being helpful first and gathering a few key facts.",
       "Infer sophistication and fit gently from the facts instead of bluntly interrogating the visitor about budget.",
       "If the matter seems outside the firm's public practice areas, answer politely and explain that the firm can review and reach out if appropriate.",
+      "Do not ask more than one question in a single reply.",
+      "Avoid exclamation points unless there is a truly unusual reason to use one.",
+      "Do not say the team will be in touch yet unless required callback details and contact details have actually been collected.",
     ],
     extraInstructions: [],
   },

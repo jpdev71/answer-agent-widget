@@ -181,7 +181,7 @@ async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result,
     return { attempted: false, delivered: false, reason: "missing_webhook_url" };
   }
 
-  if (!shouldDeliverLead({ message, priorLead, lead, result })) {
+  if (!shouldDeliverLead({ message, priorLead, lead, result, firm })) {
     return { attempted: false, delivered: false, reason: "conditions_not_met" };
   }
 
@@ -211,11 +211,13 @@ async function maybeDeliverLead({ message, requestMeta, priorLead, lead, result,
   }
 }
 
-function shouldDeliverLead({ message, priorLead, lead, result }) {
+function shouldDeliverLead({ message, priorLead, lead, result, firm }) {
   const currentMessageContact = detectContact(message);
   const hasContactInCurrentMessage = Boolean(
     currentMessageContact.phone || currentMessageContact.email,
   );
+  const hasRequiredLeadData = hasRequiredWebhookFields(lead, firm);
+  const priorHadRequiredLeadData = hasRequiredWebhookFields(priorLead, firm);
   const hasFreshContact =
     hasContactInCurrentMessage ||
     (!hasDeliverableContact(priorLead) && hasDeliverableContact(lead));
@@ -228,11 +230,39 @@ function shouldDeliverLead({ message, priorLead, lead, result }) {
     return false;
   }
 
+  if (!hasRequiredLeadData || priorHadRequiredLeadData) {
+    return false;
+  }
+
   return true;
 }
 
 function hasDeliverableContact(lead) {
   return Boolean(lead?.visitor_phone || lead?.visitor_email);
+}
+
+function hasRequiredWebhookFields(lead, firm) {
+  if (!lead) {
+    return false;
+  }
+
+  const requiredFields = getRequiredWebhookFields(firm);
+  return requiredFields.every((field) => {
+    const value = lead[field];
+    return typeof value === "string" ? Boolean(value.trim()) : Boolean(value);
+  });
+}
+
+function getRequiredWebhookFields(firm) {
+  const configured = Array.isArray(firm?.webhook?.requiredFields)
+    ? firm.webhook.requiredFields
+    : [];
+
+  if (configured.length > 0) {
+    return configured;
+  }
+
+  return ["visitor_name", "visitor_phone", "visitor_email"];
 }
 
 function buildLeadWebhookPayload({ requestMeta, lead, result, transcript, firm }) {
