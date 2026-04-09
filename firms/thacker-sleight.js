@@ -23,6 +23,9 @@ module.exports = {
     link: "",
     requiresQualification: false,
     requiresContactCapture: true,
+    costAnswer:
+      "I don't want to guess about consultation cost or pricing here. The best next step is to contact the firm directly at 616-888-3810 for current details.",
+    costGrounded: false,
   },
   webhook: {
     eventType: "lead.captured",

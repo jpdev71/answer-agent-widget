@@ -626,6 +626,10 @@ async function buildReply(message, lead, transcript, firm, adapter, groundingTex
     };
   }
 
+  if (isConsultationCostQuestion(lower)) {
+    return buildConsultationCostReply(lead, firm, adapter);
+  }
+
   if (shouldUseNoOnlineBookingGuard(lower, firm)) {
     return buildNoOnlineBookingReply(lead, firm, adapter);
   }
@@ -839,6 +843,29 @@ function isConsultationInfoQuestion(lower) {
     || /\b(is|are)\b[\w\s]{0,20}\bconsultation\b[\w\s]{0,20}\bfree\b/.test(lower)
     || /\bfree consultation\b/.test(lower)
     || /\bconsultation\b[\w\s]{0,20}\b(cost|price|pricing|fee)\b/.test(lower);
+}
+
+function isConsultationCostQuestion(lower) {
+  return /\b(is|are)\b[\w\s]{0,20}\bconsultation\b[\w\s]{0,20}\bfree\b/.test(lower)
+    || /\bfree consultation\b/.test(lower)
+    || /\bconsultation\b[\w\s]{0,20}\b(cost|price|pricing|fee)\b/.test(lower)
+    || /\bhow much\b[\w\s]{0,20}\bconsultation\b/.test(lower);
+}
+
+function buildConsultationCostReply(lead, firm, adapter) {
+  const fallbackText = firm.consult?.costGrounded
+    ? "The consultation details on the public site indicate that consultations are free."
+    : "I don't want to guess about consultation cost or pricing here. The best next step is to contact the firm directly for current details.";
+
+  return {
+    replyText: readString(firm.consult?.costAnswer) || fallbackText,
+    qualificationPath: lead.qualification_path || "review",
+    requestContactCapture: false,
+    offerConsultLink: false,
+    leadFieldsNeeded: adapter.collectMissingLeadFields(lead, firm),
+    responseSource: "policy_guardrail",
+    fallbackReason: "",
+  };
 }
 
 function buildNoOnlineBookingReply(lead, firm, adapter) {

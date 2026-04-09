@@ -26,6 +26,9 @@ module.exports = {
     link: "https://calendly.com/social-amplifier/dermer-appel-ruder?month=2026-04",
     requiresQualification: true,
     requiresContactCapture: true,
+    costAnswer:
+      "The public site says consultations are free, confidential, and no-obligation.",
+    costGrounded: true,
   },
   webhook: {
     eventType: "lead.captured",
