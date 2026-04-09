@@ -824,7 +824,21 @@ function shouldUseNoOnlineBookingGuard(lower, firm) {
     return false;
   }
 
-  return /\b(book|schedule|appointment|consultation|consult|meeting)\b/.test(lower);
+  if (isConsultationInfoQuestion(lower)) {
+    return false;
+  }
+
+  return /\b(book|schedule|appointment|meeting)\b/.test(lower)
+    || /\b(set up|arrange|request)\b[\w\s]{0,30}\b(consult|consultation|meeting)\b/.test(lower)
+    || /\b(consult|consultation)\s+(link|call|meeting)\b/.test(lower);
+}
+
+function isConsultationInfoQuestion(lower) {
+  return /\bwhat happens\b[\w\s]{0,20}\bconsultation\b/.test(lower)
+    || /\bhow does\b[\w\s]{0,20}\bconsultation\b/.test(lower)
+    || /\b(is|are)\b[\w\s]{0,20}\bconsultation\b[\w\s]{0,20}\bfree\b/.test(lower)
+    || /\bfree consultation\b/.test(lower)
+    || /\bconsultation\b[\w\s]{0,20}\b(cost|price|pricing|fee)\b/.test(lower);
 }
 
 function buildNoOnlineBookingReply(lead, firm, adapter) {
