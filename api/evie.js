@@ -5,13 +5,15 @@ const { buildGroundingBundle, getFirmRuntimeConfig } = require("../lib/firm-conf
 
 let cachedVersion = "";
 let cachedGroundingBundle = null;
+let cachedBuildInfo = null;
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(res);
   const runtime = getFirmRuntimeConfig();
   const firm = runtime.config;
   const adapter = runtime.adapter;
-  const promptVersion = getPromptVersion(firm);
+  const promptBuild = getPromptBuild(firm);
+  const promptVersion = promptBuild.version;
   const groundingBundle = getGroundingBundle(firm, promptVersion);
 
   if (req.method === "OPTIONS") {
@@ -28,6 +30,7 @@ module.exports = async function handler(req, res) {
       mode: firm.practice.answerStyle || "helpful_first",
       firm: buildFirmResponseSummary(firm, runtime.validationWarnings),
       prompt_version: promptVersion,
+      live_build: buildLiveBuildResponse(promptBuild),
     });
     return;
   }
@@ -75,7 +78,12 @@ module.exports = async function handler(req, res) {
     lead_record: lead,
     prompt_version: promptVersion,
     webhook_delivery: webhookDelivery,
-    observability: buildObservabilityPayload(firm, runtime.validationWarnings, groundingBundle.summary),
+    observability: buildObservabilityPayload(
+      firm,
+      runtime.validationWarnings,
+      groundingBundle.summary,
+      promptBuild,
+    ),
   });
 };
 
@@ -150,22 +158,31 @@ function removeTrailingCurrentUserMessage(history, message) {
   return history;
 }
 
-function getPromptVersion(firm) {
-  let latest = 0;
-  const promptPaths = [
-    ...((firm.prompt?.sharedContext || []).map((entry) => entry.path)),
-    ...((firm.grounding?.sources || [])
-      .filter((source) => source.type !== "inline_text")
-      .map((source) => source.path)),
-  ].filter(Boolean);
+function getPromptBuild(firm) {
+  const inputs = buildPromptBuildInputs(firm);
+  const fingerprint = buildHash(inputs);
+  const version = `${firm.id}:${fingerprint.slice(0, 12)}`;
 
-  for (const promptPath of promptPaths) {
-    const stats = fs.statSync(promptPath);
-    latest = Math.max(latest, stats.mtimeMs);
+  if (
+    cachedBuildInfo &&
+    cachedBuildInfo.firmId === firm.id &&
+    cachedBuildInfo.fingerprint === fingerprint
+  ) {
+    cachedVersion = cachedBuildInfo.version;
+    return cachedBuildInfo;
   }
 
-  cachedVersion = latest ? new Date(latest).toISOString() : new Date(0).toISOString();
-  return cachedVersion;
+  const buildInfo = {
+    firmId: firm.id,
+    version,
+    fingerprint,
+    inputCount: inputs.length,
+    inputs,
+  };
+
+  cachedVersion = version;
+  cachedBuildInfo = buildInfo;
+  return buildInfo;
 }
 
 function getGroundingBundle(firm, version) {
@@ -186,6 +203,87 @@ function getGroundingBundle(firm, version) {
   };
 
   return cachedGroundingBundle;
+}
+
+function buildPromptBuildInputs(firm) {
+  const promptSnapshot = {
+    firm_id: firm.id,
+    firm_name: firm.name,
+    consult_enabled: Boolean(firm.consult?.enabled),
+    consult_requires_qualification: Boolean(firm.consult?.requiresQualification),
+    consult_requires_contact_capture: Boolean(firm.consult?.requiresContactCapture),
+    webhook_delivery_mode: readString(firm.webhook?.deliveryMode),
+    response_lead_fields_needed: Array.isArray(firm.intake?.responseLeadFieldsNeeded)
+      ? firm.intake.responseLeadFieldsNeeded
+      : [],
+    contact_field_order: Array.isArray(firm.intake?.contactFieldOrder)
+      ? firm.intake.contactFieldOrder
+      : [],
+    runtime_rules: Array.isArray(firm.prompt?.runtimeRules) ? firm.prompt.runtimeRules : [],
+    extra_instructions: Array.isArray(firm.prompt?.extraInstructions)
+      ? firm.prompt.extraInstructions
+      : [],
+  };
+
+  const inputs = [
+    buildInlineBuildInput("firm-config", promptSnapshot),
+  ];
+
+  const sharedContext = Array.isArray(firm.prompt?.sharedContext) ? firm.prompt.sharedContext : [];
+  for (const entry of sharedContext) {
+    const label = readString(entry?.label) || readString(entry?.id) || "shared-context";
+    inputs.push(buildFileBuildInput(`shared:${label}`, readString(entry?.path)));
+  }
+
+  if (readString(firm.intake?.adapterPath)) {
+    inputs.push(buildFileBuildInput("adapter", readString(firm.intake.adapterPath)));
+  }
+
+  const groundingSources = Array.isArray(firm.grounding?.sources) ? firm.grounding.sources : [];
+  for (const source of groundingSources) {
+    const label = readString(source?.label) || readString(source?.id) || "grounding-source";
+    if (source?.type === "inline_text") {
+      inputs.push(buildInlineBuildInput(`grounding:${label}`, readString(source?.text)));
+      continue;
+    }
+
+    inputs.push(buildFileBuildInput(`grounding:${label}`, readString(source?.path)));
+  }
+
+  return inputs;
+}
+
+function buildInlineBuildInput(label, value) {
+  const content = typeof value === "string" ? value : JSON.stringify(value);
+  return {
+    label,
+    kind: "inline",
+    size: content.length,
+    content_hash: buildHash(content),
+  };
+}
+
+function buildFileBuildInput(label, filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return {
+      label,
+      kind: "file",
+      path: filePath || "",
+      missing: true,
+      content_hash: "",
+      size: 0,
+    };
+  }
+
+  const content = fs.readFileSync(filePath, "utf8");
+  return {
+    label,
+    kind: "file",
+    path: filePath,
+    missing: false,
+    size: Buffer.byteLength(content, "utf8"),
+    content_hash: buildHash(content),
+  };
 }
 
 function extractLead(transcript, channel, firm, adapter) {
@@ -645,6 +743,10 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "If the user is asking only for firm information, answer it directly and do not start intake or contact capture unless they shift into their own matter.",
     "Pure firm-information questions include office location, phone number, attorneys, practice areas, consultation availability, consultation cost, contingency-fee messaging, and general contact process.",
     "Questions about whether the user can book, schedule, request, or arrange a consultation are still firm-information questions unless the user also starts describing their own matter.",
+    "Questions about whether a consultation is free or what happens during a consultation are still pure firm-information questions unless the user also starts describing their own matter.",
+    "For pure firm-information questions, do not ask for contact details, do not ask an intake question, and do not thank the user for information they did not provide.",
+    "If a firm-information answer is complete, stop there instead of adding generic filler or an extra prompt to continue.",
+    "Keep simple office, contact, attorney, consultation, and practice-area answers to one or two short sentences when possible.",
     "If the user asks whether the firm handles a scenario, answer that directly before anything else.",
     "Use grounded firm facts when available for firm-specific questions such as location, attorneys, practice areas, contact process, and consultation details.",
     "If a user asks for a firm-specific fact that is not grounded here, do not guess. Say you do not want to guess and offer the next best step.",
@@ -752,6 +854,15 @@ function buildUnavailableReply(lead, reason, firm, adapter) {
   };
 }
 
+function buildLiveBuildResponse(promptBuild) {
+  return {
+    prompt_version: promptBuild.version,
+    fingerprint: promptBuild.fingerprint,
+    input_count: promptBuild.inputCount,
+    sources: promptBuild.inputs,
+  };
+}
+
 function buildFirmResponseSummary(firm, validationWarnings) {
   return {
     id: firm.id,
@@ -765,8 +876,12 @@ function buildFirmResponseSummary(firm, validationWarnings) {
   };
 }
 
-function buildObservabilityPayload(firm, validationWarnings, groundingSummary) {
+function buildObservabilityPayload(firm, validationWarnings, groundingSummary, promptBuild) {
   const payload = {};
+
+  if (shouldIncludeBuildSummary(firm)) {
+    payload.live_build = buildLiveBuildResponse(promptBuild);
+  }
 
   if (firm.observability?.includeConfigSummary) {
     payload.firm = {
@@ -788,6 +903,14 @@ function buildObservabilityPayload(firm, validationWarnings, groundingSummary) {
   }
 
   return payload;
+}
+
+function shouldIncludeBuildSummary(firm) {
+  if (typeof firm.observability?.includeBuildSummary === "boolean") {
+    return firm.observability.includeBuildSummary;
+  }
+
+  return true;
 }
 
 function buildPromptFirmSummary(firm) {

@@ -75,6 +75,7 @@ Current default alias lives in [firms/default.js](/C:/Users/faith/OneDrive/Deskt
     ]
   },
   observability: {
+    includeBuildSummary: true,
     includeConfigSummary: true,
     includeGroundingSummary: true,
     includeValidationWarnings: true
@@ -158,14 +159,23 @@ Warnings are non-fatal so the app can still run during onboarding, but they are 
 
 ## Observability
 
-`GET /api/evie` now exposes a basic firm summary and prompt version.
+`GET /api/evie` now exposes a basic firm summary plus live build metadata.
 
 `POST /api/evie` now includes:
 
 - `prompt_version`
+- `live_build`
 - `webhook_delivery`
+- `observability.live_build`
 - `observability.firm`
 - `observability.grounding_sources`
 - `observability.validation_warnings`
 
-That should be enough for initial onboarding, prompt debugging, and "which firm config was active?" questions without building a larger admin layer yet.
+`prompt_version` should be treated as a deterministic content fingerprint for the active prompt-and-grounding build, not as a file-modified timestamp. The current shape hashes:
+
+- the selected firm's prompt-relevant config snapshot
+- shared prompt-support files
+- the active adapter file
+- each active grounding source
+
+`live_build.sources` surfaces the exact inputs and per-input hashes so preview verification can answer "what is actually live here?" without guessing from Vercel deploy timing.
