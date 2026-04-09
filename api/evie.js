@@ -640,6 +640,7 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "Do not over-push qualification or contact capture.",
     "If the user is asking only for firm information, answer it directly and do not start intake or contact capture unless they shift into their own matter.",
     "Pure firm-information questions include office location, phone number, attorneys, practice areas, consultation availability, consultation cost, contingency-fee messaging, and general contact process.",
+    "Questions about whether the user can book, schedule, request, or arrange a consultation are still firm-information questions unless the user also starts describing their own matter.",
     "If the user asks whether the firm handles a scenario, answer that directly before anything else.",
     "Use grounded firm facts when available for firm-specific questions such as location, attorneys, practice areas, contact process, and consultation details.",
     "If a user asks for a firm-specific fact that is not grounded here, do not guess. Say you do not want to guess and offer the next best step.",
