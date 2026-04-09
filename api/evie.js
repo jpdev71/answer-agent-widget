@@ -46,9 +46,10 @@ module.exports = async function handler(req, res) {
 
   const requestMeta = extractRequestMeta(body);
   const history = normalizeHistory(body.conversation_history);
+  const historyBeforeCurrentMessage = removeTrailingCurrentUserMessage(history, message);
   const transcript = appendCurrentUserMessage(history, message);
   const channel = body.channel === "voice" ? "voice" : "chat";
-  const priorLead = extractLead(history, channel, firm, adapter);
+  const priorLead = extractLead(historyBeforeCurrentMessage, channel, firm, adapter);
   const lead = extractLead(transcript, channel, firm, adapter);
   const result = await buildReply(message, lead, transcript, firm, adapter, groundingBundle.text);
   const transcriptWithReply = [...transcript, { role: "assistant", content: result.replyText }];
@@ -134,6 +135,19 @@ function appendCurrentUserMessage(history, message) {
   }
 
   return [...history, { role: "user", content: message }];
+}
+
+function removeTrailingCurrentUserMessage(history, message) {
+  const lastEntry = history[history.length - 1];
+  if (
+    lastEntry &&
+    lastEntry.role === "user" &&
+    lastEntry.content.trim() === message.trim()
+  ) {
+    return history.slice(0, -1);
+  }
+
+  return history;
 }
 
 function getPromptVersion(firm) {

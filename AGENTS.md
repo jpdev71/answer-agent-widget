@@ -79,3 +79,4 @@ This file contains a growing ruleset that improves over time. **At session start
 41. [UX] Always use an explicit full-name, phone, then email contact sequence for live lead capture because deterministic field order is more reliable than free-form parser inference.
 42. [ARCH] Always fire live lead handoff on email capture for this phase because email is the clearest unambiguous webhook trigger.
 43. [UX] Never address users by their first name in Evie replies because avoiding name reuse is safer than echoing a misparsed contact field.
+44. [DATA] Always remove the current user message from prior-lead comparisons because clients may already include the active turn in conversation history and that can falsely suppress webhook delivery.
