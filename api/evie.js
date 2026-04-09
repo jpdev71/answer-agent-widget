@@ -225,6 +225,8 @@ function getWebhookDeliveryDecision({ message, priorLead, lead, result, firm }) 
   switch (deliveryMode) {
     case "every_openai_turn":
       return { shouldDeliver: true, reason: "openai_turn" };
+    case "email_capture":
+      return getEmailCaptureDecision(priorLead, lead, result);
     case "contact_update":
       return getContactUpdateDecision(priorLead, lead, firm);
     case "required_fields_ready":
@@ -241,6 +243,34 @@ function getWebhookDeliveryDecision({ message, priorLead, lead, result, firm }) 
 
 function hasDeliverableContact(lead) {
   return Boolean(lead?.visitor_phone || lead?.visitor_email);
+}
+
+function getEmailCaptureDecision(priorLead, lead, result) {
+  const priorEmail = normalizeLeadValue(priorLead?.visitor_email);
+  const currentEmail = normalizeLeadValue(lead?.visitor_email);
+  const isContactFlowActive = Boolean(
+    result?.requestContactCapture ||
+    lead?.follow_up_recommended ||
+    normalizeLeadValue(lead?.visitor_name) ||
+    normalizeLeadValue(lead?.visitor_phone),
+  );
+
+  if (!currentEmail) {
+    return { shouldDeliver: false, reason: "email_not_captured" };
+  }
+
+  if (!isContactFlowActive) {
+    return { shouldDeliver: false, reason: "email_without_contact_flow" };
+  }
+
+  if (priorEmail === currentEmail) {
+    return { shouldDeliver: false, reason: "email_already_delivered" };
+  }
+
+  return {
+    shouldDeliver: true,
+    reason: priorEmail ? "email_changed" : "email_captured",
+  };
 }
 
 function getContactUpdateDecision(priorLead, lead, firm) {
@@ -336,6 +366,25 @@ function getMissingRequiredWebhookFields(lead, firm) {
   });
 }
 
+function getContactFieldOrder(firm) {
+  const configured = Array.isArray(firm?.intake?.contactFieldOrder)
+    ? firm.intake.contactFieldOrder
+    : [];
+
+  if (configured.length > 0) {
+    return configured;
+  }
+
+  return ["visitor_name", "visitor_phone", "visitor_email"];
+}
+
+function getMissingContactFields(lead, firm) {
+  return getContactFieldOrder(firm).filter((field) => {
+    const value = lead?.[field];
+    return typeof value === "string" ? !value.trim() : !value;
+  });
+}
+
 function shouldForceRequiredFieldFollowUp(lead, missingRequiredFields) {
   if (!lead?.follow_up_recommended) {
     return false;
@@ -348,23 +397,26 @@ function shouldForceRequiredFieldFollowUp(lead, missingRequiredFields) {
   return Boolean(lead.visitor_name || lead.visitor_phone || lead.visitor_email);
 }
 
-function buildRequiredFieldFollowUpReply(lead, field) {
-  const firstName = typeof lead?.visitor_name === "string" && lead.visitor_name.trim()
-    ? lead.visitor_name.trim().split(/\s+/)[0]
-    : "";
-  const nameSuffix = firstName ? `, ${firstName}` : "";
+function shouldForceContactFieldFollowUp(lead, firm, requestContactCapture) {
+  if (!requestContactCapture) {
+    return false;
+  }
 
+  return getMissingContactFields(lead, firm).length > 0;
+}
+
+function buildRequiredFieldFollowUpReply(field) {
   switch (field) {
     case "visitor_email":
-      return `Thank you${nameSuffix}. Could you also share your email address? That will help the firm follow up with you.`;
+      return "Thank you. Could you also share your email address? That will help the firm follow up with you.";
     case "visitor_phone":
-      return `Thank you${nameSuffix}. Could you also share the best phone number to reach you?`;
+      return "Thank you. Could you also share the best phone number to reach you?";
     case "visitor_name":
       return "Thank you. Could you also share your full name so the firm can note it correctly?";
     case "preferred_callback_time":
-      return `Thank you${nameSuffix}. What would be the best time for a follow-up call?`;
+      return "Thank you. What would be the best time for a follow-up call?";
     default:
-      return `Thank you${nameSuffix}. Could you also share that last detail so the firm can follow up?`;
+      return "Thank you. Could you also share that last detail so the firm can follow up?";
   }
 }
 
@@ -529,6 +581,7 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
   const payload = await response.json();
   const parsed = parseOpenAIStructuredResponse(payload);
   const missingRequiredFields = getMissingRequiredWebhookFields(lead, firm);
+  const missingContactFields = getMissingContactFields(lead, firm);
 
   const offerConsultLink = parsed.offer_consult_link;
   const cleanReplyText = sanitizeReplyText(parsed.reply_text);
@@ -539,8 +592,11 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
       : cleanReplyText;
   let requestContactCapture = parsed.request_contact_capture;
 
-  if (shouldForceRequiredFieldFollowUp(lead, missingRequiredFields)) {
-    replyText = buildRequiredFieldFollowUpReply(lead, missingRequiredFields[0]);
+  if (shouldForceContactFieldFollowUp(lead, firm, requestContactCapture)) {
+    replyText = buildRequiredFieldFollowUpReply(missingContactFields[0]);
+    requestContactCapture = true;
+  } else if (shouldForceRequiredFieldFollowUp(lead, missingRequiredFields)) {
+    replyText = buildRequiredFieldFollowUpReply(missingRequiredFields[0]);
     requestContactCapture = true;
   }
 

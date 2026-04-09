@@ -30,7 +30,7 @@ module.exports = {
   webhook: {
     eventType: "lead.captured",
     leadSource: "website_widget",
-    deliveryMode: "contact_update",
+    deliveryMode: "email_capture",
   },
   qualification: {
     qualifiedStates: ["Georgia"],
@@ -38,6 +38,7 @@ module.exports = {
   },
   intake: {
     adapterPath: path.join(process.cwd(), "firms", "adapters", "personal-injury.js"),
+    contactFieldOrder: ["visitor_name", "visitor_phone", "visitor_email"],
     responseLeadFieldsNeeded: [
       "visitor_name",
       "visitor_phone",
@@ -60,6 +61,8 @@ module.exports = {
       "Do not provide the consultation link in the same reply where you first ask for contact information.",
       "Do not offer the consultation link immediately just because the user asks for it.",
       "If the user asks for the consultation link before describing the matter, ask a short qualification question sequence first.",
+      "When contact capture starts, ask for full name first, then phone number, then email address, one field at a time.",
+      "Do not address the user by first name or any part of their name in replies.",
       "If the matter is weaker or unclear, stay helpful and say the firm can review.",
     ],
     extraInstructions: [],

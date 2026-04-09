@@ -27,7 +27,7 @@ module.exports = {
   webhook: {
     eventType: "lead.captured",
     leadSource: "website_widget",
-    deliveryMode: "contact_update",
+    deliveryMode: "email_capture",
     requiredFields: ["visitor_name", "visitor_phone", "visitor_email"],
   },
   qualification: {
@@ -37,6 +37,7 @@ module.exports = {
   },
   intake: {
     adapterPath: path.join(process.cwd(), "firms", "adapters", "family-law.js"),
+    contactFieldOrder: ["visitor_name", "visitor_phone", "visitor_email"],
     responseLeadFieldsNeeded: [
       "visitor_name",
       "visitor_phone",
@@ -58,11 +59,13 @@ module.exports = {
       "Do not offer a consultation link. This firm does not use self-serve scheduling in this test.",
       "For stronger matters, explain that the attorneys can review the details and be in touch if there appears to be a fit.",
       "Ask for contact details only after being helpful first and gathering a few key facts.",
+      "When contact capture starts, ask for full name first, then phone number, then email address, one field at a time.",
       "Infer sophistication and fit gently from the facts instead of bluntly interrogating the visitor about budget.",
       "If the matter seems outside the firm's public practice areas, answer politely and explain that the firm can review and reach out if appropriate.",
       "Do not ask more than one question in a single reply.",
       "Avoid exclamation points unless there is a truly unusual reason to use one.",
       "Do not ask for preferred callback time in this test configuration.",
+      "Do not address the user by first name or any part of their name in replies.",
       "Do not say the team will be in touch yet unless required contact details have actually been collected.",
     ],
     extraInstructions: [],
