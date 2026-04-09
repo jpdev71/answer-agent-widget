@@ -528,6 +528,10 @@ async function buildReply(message, lead, transcript, firm, adapter, groundingTex
     };
   }
 
+  if (shouldUseNoOnlineBookingGuard(lower, firm)) {
+    return buildNoOnlineBookingReply(lead, firm, adapter);
+  }
+
   if (process.env.OPENAI_API_KEY) {
     try {
       return await buildOpenAIReply(message, lead, transcript, firm, adapter, groundingText);
@@ -711,6 +715,27 @@ function detectContact(text) {
 
 function isEmergency(lower) {
   return /can't breathe|bleeding badly|emergency|call 911|immediate danger/.test(lower);
+}
+
+function shouldUseNoOnlineBookingGuard(lower, firm) {
+  if (firm.consult?.enabled) {
+    return false;
+  }
+
+  return /\b(book|schedule|appointment|consultation|consult|meeting)\b/.test(lower);
+}
+
+function buildNoOnlineBookingReply(lead, firm, adapter) {
+  return {
+    replyText:
+      "We do not offer online self-scheduling in this setup. If you'd like, you can share a few details here and the firm can review them and reach out if appropriate.",
+    qualificationPath: lead.qualification_path || "review",
+    requestContactCapture: false,
+    offerConsultLink: false,
+    leadFieldsNeeded: adapter.collectMissingLeadFields(lead, firm),
+    responseSource: "policy_guardrail",
+    fallbackReason: "",
+  };
 }
 
 function buildUnavailableReply(lead, reason, firm, adapter) {

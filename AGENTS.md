@@ -81,3 +81,4 @@ This file contains a growing ruleset that improves over time. **At session start
 43. [UX] Never address users by their first name in Evie replies because avoiding name reuse is safer than echoing a misparsed contact field.
 44. [DATA] Always remove the current user message from prior-lead comparisons because clients may already include the active turn in conversation history and that can falsely suppress webhook delivery.
 45. [PROCESS] Never spend grounding effort on office hours for these firm bundles unless the user specifically asks because regular business hours are a safe default assumption and the knowledge base should stay lightweight.
+46. [DATA] Always word-bound short legal acronyms in transcript heuristics because an unbounded `ppo` match inside `appointment` can corrupt family-law lead summaries.

@@ -190,7 +190,9 @@ function detectHighConflictIndicators(lower) {
   if (/alienation|parental alienation/.test(lower)) indicators.push("parental alienation");
   if (/false claims|false allegation/.test(lower)) indicators.push("false claims");
   if (/high conflict|volatile|unpredictable/.test(lower)) indicators.push("high conflict");
-  if (/domestic violence|stalking|protection order|ppo/.test(lower)) indicators.push("safety concerns");
+  if (/\bdomestic violence\b|\bstalking\b|\bprotection order\b|\bppo\b/.test(lower)) {
+    indicators.push("safety concerns");
+  }
   return indicators.join(", ");
 }
 
