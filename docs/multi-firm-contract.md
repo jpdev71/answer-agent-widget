@@ -64,11 +64,12 @@ Current default alias lives in [firms/default.js](/C:/Users/faith/OneDrive/Deskt
     responseLeadFieldsNeeded: ["visitor_name", "visitor_phone"]
   },
   prompt: {
+    sharedContext: [{ id, label, path }],
     runtimeRules: [],
     extraInstructions: []
   },
   grounding: {
-    allowedSourceTypes: ["markdown_file", "text_file", "inline_text"],
+    allowedSourceTypes: ["markdown_file", "text_file", "inline_text", "json_file"],
     sources: [
       { id, label, type, usage, path?, text?, required }
     ]
@@ -115,6 +116,9 @@ Allowed grounding sources are deliberately narrow:
 - `markdown_file`
 - `text_file`
 - `inline_text`
+- `json_file`
+
+Shared prompt support should live in `prompt.sharedContext`, while firm knowledge should live in the grounding bundle.
 
 Each source should declare:
 
@@ -134,7 +138,8 @@ For this project, keep each firm's knowledge bundle small and curated. The curre
 - about / attorney bio facts
 - practice area facts
 - contact / consultation facts
-- optional internal positioning note
+- explicit "do not guess" boundaries
+- source URL plus verification date for each page
 
 The goal is not to build a broad knowledge system. The goal is to anchor Evie on firm-specific facts she should not guess about while letting the base model handle general conversational reasoning.
 

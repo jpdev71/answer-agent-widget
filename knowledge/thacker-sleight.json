@@ -1,0 +1,136 @@
+{
+  "bundle_version": 1,
+  "firm_id": "thacker-sleight",
+  "firm_name": "Thacker Sleight",
+  "last_verified_at": "2026-04-09",
+  "supported_topics": [
+    "office location and contact details",
+    "attorney team and public credentials",
+    "publicly listed family-law practice areas",
+    "Michigan service area",
+    "general public-facing firm positioning"
+  ],
+  "do_not_guess": [
+    "pricing, retainers, or hourly rates not stated in the curated bundle",
+    "whether a consultation will be offered on any specific matter",
+    "which attorney will handle a case unless the source says so",
+    "case outcomes or strategy for a visitor's specific family-law situation"
+  ],
+  "sources": [
+    {
+      "id": "homepage",
+      "label": "Homepage",
+      "page_type": "homepage",
+      "url": "https://www.thackersleight.com/",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Thacker Sleight presents itself as a Michigan boutique family law firm focused exclusively on family law and family crisis management.",
+        "The homepage says the firm handles complex legal challenges affecting family, personal, and financial interests.",
+        "The homepage groups its public services into divorce processes and agreements, support/custody/parenting, business and financial matters, and protection and specialized matters.",
+        "The site emphasizes bespoke legal strategies, meticulous attention, and innovative solutions for significant life transitions."
+      ]
+    },
+    {
+      "id": "about",
+      "label": "About page",
+      "page_type": "about",
+      "url": "https://www.thackersleight.com/about",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "The about page lists Connie Thacker, Allison Sleight, Emily Rysberg, Ben Judd, and Grant James.",
+        "The site says the firm serves clients throughout Michigan, including Kent County, Ottawa County, St. Joseph County, Montcalm County, and beyond.",
+        "The about page says the attorneys focus on strategic and empathetic family law representation and aim to help clients be proactive and avoid future issues."
+      ]
+    },
+    {
+      "id": "practice-areas",
+      "label": "Practice areas page",
+      "page_type": "practice_areas",
+      "url": "https://www.thackersleight.com/practice-areas",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "The practice-areas page lists collaborative divorce, mediation, arbitration, prenuptial agreements, postnuptial agreements, confidential settlements, and annulment.",
+        "The page lists spousal support and alimony, child support, parental alienation and false claims, custody and parenting time, grandparent rights, paternity, termination of parental rights, and adoptions.",
+        "The page lists business valuation in divorce, business asset protection, income and tax-return analysis, domestic asset protection trusts, qualified domestic relation orders, military pensions, and separate maintenance.",
+        "The page lists personal protection orders, family crisis management, domestic violence and juvenile delinquency related matters, Child Protective Services matters, and Friend of the Court matters."
+      ]
+    },
+    {
+      "id": "contact",
+      "label": "Contact page",
+      "page_type": "contact",
+      "url": "https://www.thackersleight.com/contact",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "The public phone number shown is 616-888-3810.",
+        "The public office address shown is 445 Cherry Street SE, Grand Rapids, MI 49503.",
+        "The contact page says visitors can contact the firm for legal support in family law matters and that someone from the team will be in touch soon after the form is submitted."
+      ]
+    },
+    {
+      "id": "connie-bio",
+      "label": "Connie Thacker bio",
+      "page_type": "attorney_bio",
+      "url": "https://www.thackersleight.com/about/connie-thacker",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Connie Thacker is described as an attorney and shareholder at Thacker Sleight.",
+        "Her bio says she is known as both a litigator and mediator and that she and Allison Sleight started the firm after experience at larger firms.",
+        "Her bio says she is a Fellow of the American Academy of Matrimonial Lawyers and a Certified Divorce Financial Analyst.",
+        "Her bio says she has been licensed in Michigan since 1994 and has recognition related to collaborative divorce, family law, and mediation.",
+        "The bio also says she has formal AAML arbitration training and experience with complex financial, tax, and business-valuation issues related to divorce."
+      ]
+    },
+    {
+      "id": "allison-bio",
+      "label": "Allison Sleight bio",
+      "page_type": "attorney_bio",
+      "url": "https://www.thackersleight.com/about/allison-sleight/",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Allison Sleight is described as an attorney and shareholder at Thacker Sleight.",
+        "Her bio says she and Connie Thacker started a smaller, more personal firm and that Allison is interested in using technology to improve client service and outcomes.",
+        "Her bio highlights experience with complex litigation, trial advocacy, compensation issues, accounting and business valuation issues, income tracing, and collection efforts.",
+        "Her bio says she has been recognized by Super Lawyers and has served in leadership roles related to Michigan family law."
+      ]
+    },
+    {
+      "id": "emily-bio",
+      "label": "Emily Rysberg bio",
+      "page_type": "attorney_bio",
+      "url": "https://www.thackersleight.com/about/emily-rysberg",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Emily Rysberg is described as a family law attorney with more than a decade of experience negotiating and litigating complex custody, support, and property-division matters.",
+        "Her bio says she joined Thacker Sleight in 2023 after previously being a partner at a large international corporate law firm.",
+        "The bio says she is resolution-oriented, handles trial work when needed, and has appellate experience including successful arguments in the Michigan Court of Appeals.",
+        "Her bio notes recognition from Grand Rapids Magazine and Best Lawyers in America: Ones to Watch."
+      ]
+    },
+    {
+      "id": "ben-bio",
+      "label": "Ben Judd bio",
+      "page_type": "attorney_bio",
+      "url": "https://www.thackersleight.com/about/ben-judd",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Ben Judd's bio says he has practiced family law in the Grand Rapids area for about 15 years.",
+        "The bio describes him as a problem solver who emphasizes thorough analysis, calm preparation, and clear attorney-client communication.",
+        "His mediation practice includes divorce, custody, parenting-time, and support cases in Kent and Ottawa County.",
+        "The bio notes that his clientele includes judges and attorneys."
+      ]
+    },
+    {
+      "id": "grant-bio",
+      "label": "Grant James bio",
+      "page_type": "attorney_bio",
+      "url": "https://www.thackersleight.com/about/grant-james",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Grant James's bio says he graduated cum laude from the University of Wisconsin Law School and received the school's Law-in-Action scholarship.",
+        "Before joining Thacker Sleight, his bio says he practiced complex commercial litigation and represented municipalities and other governmental bodies.",
+        "The bio says he now applies that background to family law matters including divorce and child custody."
+      ]
+    }
+  ]
+}

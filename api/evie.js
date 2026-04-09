@@ -152,10 +152,12 @@ function removeTrailingCurrentUserMessage(history, message) {
 
 function getPromptVersion(firm) {
   let latest = 0;
-  const promptPaths = (firm.grounding?.sources || [])
-    .filter((source) => source.type !== "inline_text")
-    .map((source) => source.path)
-    .filter(Boolean);
+  const promptPaths = [
+    ...((firm.prompt?.sharedContext || []).map((entry) => entry.path)),
+    ...((firm.grounding?.sources || [])
+      .filter((source) => source.type !== "inline_text")
+      .map((source) => source.path)),
+  ].filter(Boolean);
 
   for (const promptPath of promptPaths) {
     const stats = fs.statSync(promptPath);
@@ -636,9 +638,12 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "Answer the user's actual question first when possible.",
     "Do not reset to a generic opener after factual follow-up answers.",
     "Do not over-push qualification or contact capture.",
+    "If the user is asking only for firm information, answer it directly and do not start intake or contact capture unless they shift into their own matter.",
+    "Pure firm-information questions include office location, phone number, attorneys, practice areas, consultation availability, consultation cost, contingency-fee messaging, and general contact process.",
     "If the user asks whether the firm handles a scenario, answer that directly before anything else.",
     "Use grounded firm facts when available for firm-specific questions such as location, attorneys, practice areas, contact process, and consultation details.",
     "If a user asks for a firm-specific fact that is not grounded here, do not guess. Say you do not want to guess and offer the next best step.",
+    "Never invent office hours, turnaround times, availability, pricing, or booking mechanics that are not explicitly grounded.",
     "Avoid vague acknowledgments like 'That helps' unless immediately followed by a concrete next step or reason.",
     "Do not give legal advice, guarantees, or exact strategy.",
     "If the user just gave contact information or a factual intake answer, acknowledge it naturally and continue.",
@@ -646,7 +651,7 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     ...adapter.getPromptRuntimeRules(firm),
     `Current firm config:\n${JSON.stringify(buildPromptFirmSummary(firm), null, 2)}`,
     `Current extracted lead record:\n${JSON.stringify(lead, null, 2)}`,
-    `Prompt package:\n${groundingText}`,
+    `Grounded runtime bundle:\n${groundingText}`,
   ].join("\n\n");
 }
 

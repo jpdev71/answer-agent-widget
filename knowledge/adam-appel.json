@@ -1,0 +1,76 @@
+{
+  "bundle_version": 1,
+  "firm_id": "dermer-appel-ruder",
+  "firm_name": "Dermer Appel Ruder",
+  "last_verified_at": "2026-04-09",
+  "supported_topics": [
+    "office location and contact details",
+    "consultation availability",
+    "attorney team and bios",
+    "publicly listed practice areas",
+    "general public-facing firm positioning"
+  ],
+  "do_not_guess": [
+    "office hours not stated in the curated bundle",
+    "who specifically will take the case unless the source says so",
+    "exact case value, results, or whether representation will be offered",
+    "firm policies or fees beyond publicly stated free consultation and contingency-fee messaging"
+  ],
+  "sources": [
+    {
+      "id": "homepage",
+      "label": "Homepage",
+      "page_type": "homepage",
+      "url": "https://darlawllc.com/",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "Dermer Appel Ruder presents itself as a Georgia personal injury firm based in Norcross, Georgia.",
+        "The homepage says the firm serves clients in Cobb, Gwinnett, DeKalb, and Fulton Counties and states that it serves cities throughout Georgia.",
+        "The site says the partners previously worked as insurance defense attorneys for a combined 80 years before representing injured Georgians.",
+        "The homepage says consultations are free, confidential, and no-obligation.",
+        "The public practice list on the homepage includes car accidents, commercial truck accidents, nursing home abuse, serious injuries, slip and fall injuries, and wrongful death.",
+        "The site says clients work with a dedicated lead attorney rather than a case manager or paralegal.",
+        "The homepage says personal injury clients do not pay attorney fees unless the firm is successful and that fees are handled on a contingency basis."
+      ]
+    },
+    {
+      "id": "about",
+      "label": "About page",
+      "page_type": "about",
+      "url": "https://darlawllc.com/about-us/",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "The about page says the firm helps injury clients pursue compensation and uses prior insurance-defense experience to understand how insurance companies work.",
+        "The page highlights attentive legal representation, millions recovered, and 80-plus years of experience on the clients' side.",
+        "The firm describes itself as partnership-based and says clients work directly with a lead attorney instead of a case manager.",
+        "The public about page again lists car accidents, commercial truck accidents, nursing home abuse, serious injuries, slip and fall injuries, and wrongful death as example case types."
+      ]
+    },
+    {
+      "id": "attorneys",
+      "label": "Attorneys page",
+      "page_type": "attorney_bios",
+      "url": "https://darlawllc.com/attorneys/",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "The attorneys page lists Adam Appel as a partner, Kim Ruder as a partner, and Stephen Dermer as retired.",
+        "The page repeats the firm's message that the partners spent years working as insurance defense attorneys before fighting for injured clients.",
+        "The site shows public case-result examples including premise liability, intersection accident, burn injuries, and pedestrian accident results, but Evie should not imply those outcomes predict any new matter."
+      ]
+    },
+    {
+      "id": "contact",
+      "label": "Contact page",
+      "page_type": "contact",
+      "url": "https://darlawllc.com/contact/",
+      "verified_at": "2026-04-09",
+      "facts": [
+        "The contact page invites visitors to request a free consultation.",
+        "The public phone number shown is 404-892-8884.",
+        "The public address shown is 708 Holcomb Bridge Rd., Norcross, GA 30071.",
+        "The contact page says one of the firm's attorneys will contact the visitor after the form is submitted.",
+        "The site includes a disclaimer that website information is for general information only, is not legal advice, and does not create an attorney-client relationship."
+      ]
+    }
+  ]
+}
