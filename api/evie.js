@@ -9,12 +9,14 @@ let cachedBuildInfo = null;
 
 module.exports = async function handler(req, res) {
   setCorsHeaders(res);
+  const requestStartedAt = Date.now();
   const runtime = getFirmRuntimeConfig();
   const firm = runtime.config;
   const adapter = runtime.adapter;
   const promptBuild = getPromptBuild(firm);
   const promptVersion = promptBuild.version;
   const groundingBundle = getGroundingBundle(firm, promptVersion);
+  const voicePreview = getVoicePreviewConfig(firm);
 
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -31,6 +33,7 @@ module.exports = async function handler(req, res) {
       firm: buildFirmResponseSummary(firm, runtime.validationWarnings),
       prompt_version: promptVersion,
       live_build: buildLiveBuildResponse(promptBuild),
+      voice_preview: voicePreview,
     });
     return;
   }
@@ -48,6 +51,7 @@ module.exports = async function handler(req, res) {
   }
 
   const requestMeta = extractRequestMeta(body);
+  const voiceMeta = extractVoiceMeta(body.voice_meta);
   const history = normalizeHistory(body.conversation_history);
   const historyBeforeCurrentMessage = removeTrailingCurrentUserMessage(history, message);
   const transcript = appendCurrentUserMessage(history, message);
@@ -65,6 +69,7 @@ module.exports = async function handler(req, res) {
     transcript: transcriptWithReply,
     firm,
   });
+  const latencyMs = Date.now() - requestStartedAt;
 
   res.status(200).json({
     reply_text: result.replyText,
@@ -83,6 +88,17 @@ module.exports = async function handler(req, res) {
       runtime.validationWarnings,
       groundingBundle.summary,
       promptBuild,
+      {
+        message,
+        transcript: transcriptWithReply,
+        channel,
+        requestMeta,
+        voiceMeta,
+        latencyMs,
+        result,
+        webhookDelivery,
+        voicePreview,
+      },
     ),
   });
 };
@@ -116,6 +132,20 @@ function extractRequestMeta(body) {
     sessionId: readString(body.session_id),
     pageUrl: readString(body.page_url),
     pageTitle: readString(body.page_title),
+  };
+}
+
+function extractVoiceMeta(voiceMeta) {
+  if (!voiceMeta || typeof voiceMeta !== "object") {
+    return {};
+  }
+
+  return {
+    input_mode: readString(voiceMeta.input_mode),
+    stt_provider: readString(voiceMeta.stt_provider),
+    tts_provider: readString(voiceMeta.tts_provider),
+    transport: readString(voiceMeta.transport),
+    utterance_mode: readString(voiceMeta.utterance_mode),
   };
 }
 
@@ -203,6 +233,29 @@ function getGroundingBundle(firm, version) {
   };
 
   return cachedGroundingBundle;
+}
+
+function getVoicePreviewConfig(firm) {
+  const globalEnabled = readBooleanEnv(process.env.EVIE_VOICE_PREVIEW_ENABLED);
+  const previewFirmIds = readCsvEnv(
+    process.env.EVIE_VOICE_PREVIEW_FIRM_IDS || "dermer-appel-ruder",
+  );
+  const currentFirmEnabled = globalEnabled && previewFirmIds.includes(firm.id);
+
+  return {
+    enabled: globalEnabled,
+    current_firm_enabled: currentFirmEnabled,
+    reason: globalEnabled
+      ? currentFirmEnabled
+        ? "preview_enabled"
+        : "firm_not_in_preview"
+      : "flag_disabled",
+    preview_firm_ids: previewFirmIds,
+    transport: "browser_native",
+    utterance_mode: "single_turn",
+    stt_provider: "browser_speech_recognition",
+    tts_provider: "browser_speech_synthesis",
+  };
 }
 
 function buildPromptBuildInputs(firm) {
@@ -920,7 +973,13 @@ function buildFirmResponseSummary(firm, validationWarnings) {
   };
 }
 
-function buildObservabilityPayload(firm, validationWarnings, groundingSummary, promptBuild) {
+function buildObservabilityPayload(
+  firm,
+  validationWarnings,
+  groundingSummary,
+  promptBuild,
+  runtimeContext = {},
+) {
   const payload = {};
 
   if (shouldIncludeBuildSummary(firm)) {
@@ -945,6 +1004,37 @@ function buildObservabilityPayload(firm, validationWarnings, groundingSummary, p
   if (firm.observability?.includeValidationWarnings) {
     payload.validation_warnings = validationWarnings;
   }
+
+  payload.runtime = {
+    request_channel: runtimeContext.channel || "chat",
+    latency_ms: Number.isFinite(runtimeContext.latencyMs) ? runtimeContext.latencyMs : 0,
+    response_source: runtimeContext.result?.responseSource || "",
+    fallback_reason: runtimeContext.result?.fallbackReason || "",
+    webhook_attempted: Boolean(runtimeContext.webhookDelivery?.attempted),
+    webhook_delivered: Boolean(runtimeContext.webhookDelivery?.delivered),
+  };
+
+  payload.request = {
+    session_id_present: Boolean(runtimeContext.requestMeta?.sessionId),
+    page_url: runtimeContext.requestMeta?.pageUrl || "",
+    page_title: runtimeContext.requestMeta?.pageTitle || "",
+    current_message_text: runtimeContext.message || "",
+    transcript_turn_count: Array.isArray(runtimeContext.transcript) ? runtimeContext.transcript.length : 0,
+    transcript_text: renderTranscriptText(runtimeContext.transcript),
+  };
+
+  payload.voice_transport = {
+    preview_enabled: Boolean(runtimeContext.voicePreview?.enabled),
+    current_firm_enabled: Boolean(runtimeContext.voicePreview?.current_firm_enabled),
+    transport: runtimeContext.voiceMeta?.transport || runtimeContext.voicePreview?.transport || "",
+    input_mode: runtimeContext.voiceMeta?.input_mode || "",
+    utterance_mode:
+      runtimeContext.voiceMeta?.utterance_mode || runtimeContext.voicePreview?.utterance_mode || "",
+    stt_provider:
+      runtimeContext.voiceMeta?.stt_provider || runtimeContext.voicePreview?.stt_provider || "",
+    tts_provider:
+      runtimeContext.voiceMeta?.tts_provider || runtimeContext.voicePreview?.tts_provider || "",
+  };
 
   return payload;
 }
@@ -976,4 +1066,32 @@ function buildPromptFirmSummary(firm) {
       response_lead_fields_needed: firm.intake?.responseLeadFieldsNeeded || [],
     },
   };
+}
+
+function renderTranscriptText(transcript) {
+  if (!Array.isArray(transcript) || transcript.length === 0) {
+    return "";
+  }
+
+  return transcript
+    .map((entry) => `${entry.role}: ${readString(entry.content)}`)
+    .filter(Boolean)
+    .join("\n");
+}
+
+function readBooleanEnv(value) {
+  const normalized = readString(value).toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+function readCsvEnv(value) {
+  const normalized = readString(value);
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
