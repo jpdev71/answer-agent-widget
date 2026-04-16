@@ -557,10 +557,6 @@ function speakReply(text) {
     utterance.volume = 1;
     utterance.addEventListener("start", () => {
       started = true;
-      if (!settled) {
-        settled = true;
-        resolve({ spoken: true, reason: "" });
-      }
     });
     utterance.addEventListener("error", (event) => {
       if (!settled) {
@@ -607,14 +603,20 @@ function speakReply(text) {
         return;
       }
 
-      const isSpeaking =
-        window.speechSynthesis.speaking || window.speechSynthesis.pending || started;
+      if (started || window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        return;
+      }
+
       settled = true;
+      state.isVoiceReplyPlaying = false;
+      if (state.activeSpeechUtterance === utterance) {
+        state.activeSpeechUtterance = null;
+      }
       resolve({
-        spoken: isSpeaking,
-        reason: isSpeaking ? "" : "speech_synthesis_not_started",
+        spoken: false,
+        reason: "speech_synthesis_not_started",
       });
-    }, 1500);
+    }, 1800);
   });
 }
 
@@ -640,5 +642,5 @@ function queueVoiceRecognitionRestart() {
     voiceToggle.classList.remove("is-active");
     voiceToggle.textContent = "Start Voice";
     setStatus("Voice preview stopped because browser speech recognition is unavailable.");
-  }, 350);
+  }, 700);
 }
