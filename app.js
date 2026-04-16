@@ -9,6 +9,7 @@ const state = {
   conversationHistory: [],
   hasRenderedWelcome: false,
   lastAssistantReply: "",
+  lastVoiceReplyEndedAt: 0,
   voicePreview: {
     enabled: false,
     currentFirmEnabled: false,
@@ -288,6 +289,13 @@ function startBrowserRecognition() {
       return;
     }
 
+    if (shouldIgnoreVoiceTranscript(transcript)) {
+      stopBrowserRecognition();
+      setStatus("Ignored a likely echo of Evie's own reply. Still listening...");
+      queueVoiceRecognitionRestart();
+      return;
+    }
+
     addUserMessage(transcript);
     state.conversationHistory.push({ role: "user", content: transcript });
     setStatus("Processing voice transcript...");
@@ -564,6 +572,7 @@ function speakReply(text) {
         resolve({ spoken: false, reason: event.error || "speech_synthesis_error" });
       }
       state.isVoiceReplyPlaying = false;
+      state.lastVoiceReplyEndedAt = Date.now();
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -577,6 +586,7 @@ function speakReply(text) {
         });
       }
       state.isVoiceReplyPlaying = false;
+      state.lastVoiceReplyEndedAt = Date.now();
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -609,6 +619,7 @@ function speakReply(text) {
 
       settled = true;
       state.isVoiceReplyPlaying = false;
+      state.lastVoiceReplyEndedAt = Date.now();
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -642,5 +653,61 @@ function queueVoiceRecognitionRestart() {
     voiceToggle.classList.remove("is-active");
     voiceToggle.textContent = "Start Voice";
     setStatus("Voice preview stopped because browser speech recognition is unavailable.");
-  }, 700);
+  }, 1400);
+}
+
+function shouldIgnoreVoiceTranscript(transcript) {
+  const now = Date.now();
+  const normalizedTranscript = normalizeSpeechForComparison(transcript);
+  const normalizedReply = normalizeSpeechForComparison(state.lastAssistantReply);
+
+  if (!normalizedTranscript) {
+    return false;
+  }
+
+  const withinCooldown =
+    state.lastVoiceReplyEndedAt > 0 && now - state.lastVoiceReplyEndedAt < 2500;
+
+  if (withinCooldown && normalizedReply && areSpeechStringsSimilar(normalizedTranscript, normalizedReply)) {
+    return true;
+  }
+
+  return false;
+}
+
+function normalizeSpeechForComparison(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function areSpeechStringsSimilar(transcript, reply) {
+  if (!transcript || !reply) {
+    return false;
+  }
+
+  if (reply.includes(transcript) || transcript.includes(reply)) {
+    return true;
+  }
+
+  const transcriptWords = transcript.split(" ").filter(Boolean);
+  const replyWords = reply.split(" ").filter(Boolean);
+
+  if (transcriptWords.length === 0 || replyWords.length === 0) {
+    return false;
+  }
+
+  const transcriptSet = new Set(transcriptWords);
+  let overlapCount = 0;
+  for (const word of replyWords) {
+    if (transcriptSet.has(word)) {
+      overlapCount += 1;
+    }
+  }
+
+  const overlapRatio = overlapCount / Math.max(1, transcriptWords.length);
+  return overlapRatio >= 0.7;
 }
