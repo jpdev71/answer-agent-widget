@@ -3,13 +3,11 @@ const state = {
   mode: "chat",
   isVoiceModeActive: false,
   isVoiceReplyPlaying: false,
-  isVoiceRecognitionStarting: false,
   recognition: null,
   activeSpeechUtterance: null,
   conversationHistory: [],
   hasRenderedWelcome: false,
   lastAssistantReply: "",
-  lastVoiceReplyEndedAt: 0,
   voicePreview: {
     enabled: false,
     currentFirmEnabled: false,
@@ -78,7 +76,7 @@ const providers = {
         return "Voice preview is not enabled for this firm yet.";
       }
 
-      return "Voice preview is now in live conversation mode. Evie will keep listening until you press Stop Voice.";
+      return "Voice preview is capturing one voice turn at a time while we keep the backend stable. True hands-free conversation will come from the dedicated voice-runtime phase.";
     },
   },
 };
@@ -165,7 +163,7 @@ voiceToggle.addEventListener("click", async () => {
 
   const recognitionStarted = startBrowserRecognition();
   if (recognitionStarted) {
-    setStatus("Listening for your next question...");
+    setStatus("Listening for one voice turn...");
   } else {
     state.isVoiceModeActive = false;
     voiceToggle.classList.remove("is-active");
@@ -289,13 +287,6 @@ function startBrowserRecognition() {
       return;
     }
 
-    if (shouldIgnoreVoiceTranscript(transcript)) {
-      stopBrowserRecognition();
-      setStatus("Ignored a likely echo of Evie's own reply. Still listening...");
-      queueVoiceRecognitionRestart();
-      return;
-    }
-
     addUserMessage(transcript);
     state.conversationHistory.push({ role: "user", content: transcript });
     setStatus("Processing voice transcript...");
@@ -303,40 +294,28 @@ function startBrowserRecognition() {
     const response = await providers[state.provider].sendText(transcript, {
       channel: "voice",
       voiceMeta: {
-        inputMode: "continuous_session",
+        inputMode: "single_utterance",
         sttProvider: state.voicePreview.sttProvider,
         ttsProvider: state.voicePreview.ttsProvider,
         transport: state.voicePreview.transport,
-        utteranceMode: "continuous_session",
+        utteranceMode: "single_turn",
       },
     });
     await finalizeAssistantTurn(response, { channel: "voice", speakReply: true });
-    queueVoiceRecognitionRestart();
+    state.isVoiceModeActive = false;
+    voiceToggle.classList.remove("is-active");
+    voiceToggle.textContent = "Start Voice";
   });
 
   state.recognition.addEventListener("error", (event) => {
-    if (
-      state.isVoiceModeActive &&
-      event.error !== "aborted" &&
-      event.error !== "no-speech" &&
-      event.error !== "audio-capture"
-    ) {
-      state.isVoiceModeActive = false;
-      voiceToggle.classList.remove("is-active");
-      voiceToggle.textContent = "Start Voice";
-    }
+    state.isVoiceModeActive = false;
+    voiceToggle.classList.remove("is-active");
+    voiceToggle.textContent = "Start Voice";
     setStatus(`Browser speech recognition error: ${event.error}`);
-    if (state.isVoiceModeActive && (event.error === "no-speech" || event.error === "aborted")) {
-      queueVoiceRecognitionRestart();
-    }
   });
 
   state.recognition.addEventListener("end", () => {
     state.recognition = null;
-
-    if (state.isVoiceModeActive && !state.isVoiceReplyPlaying) {
-      queueVoiceRecognitionRestart();
-    }
   });
 
   state.recognition.start();
@@ -345,14 +324,12 @@ function startBrowserRecognition() {
 
 function stopBrowserRecognition() {
   if (!state.recognition) {
-    state.isVoiceRecognitionStarting = false;
     return;
   }
 
   state.recognition.onend = null;
   state.recognition.stop();
   state.recognition = null;
-  state.isVoiceRecognitionStarting = false;
 }
 
 function stopSpeechPlayback() {
@@ -475,7 +452,7 @@ function updateVoicePreviewUi() {
 
   if (voiceCopy) {
     voiceCopy.textContent = isEnabled
-      ? "Speak one question, and Evie will route the transcript through the same backend used for chat before reading the reply aloud."
+      ? "Voice preview is stable one-turn capture for now: tap once, speak once, hear Evie's reply, then tap again. True hands-free conversation will move to a dedicated voice runtime."
       : "Voice preview is currently disabled for this firm. Chat remains the supported path while we compare transport behavior safely.";
   }
 
@@ -527,7 +504,7 @@ function buildTurnStatus(response, options, playback = { spoken: false, reason: 
   if (options.channel === "voice") {
     const spokenSuffix = options.speakReply
       ? playback.spoken
-        ? " Reply spoken aloud. Still listening."
+        ? " Reply spoken aloud. Tap Start Voice for the next turn."
         : ` Reply text is in the thread, but audio did not start (${playback.reason}).`
       : "";
     return webhookStatus
@@ -572,7 +549,6 @@ function speakReply(text) {
         resolve({ spoken: false, reason: event.error || "speech_synthesis_error" });
       }
       state.isVoiceReplyPlaying = false;
-      state.lastVoiceReplyEndedAt = Date.now();
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -586,7 +562,6 @@ function speakReply(text) {
         });
       }
       state.isVoiceReplyPlaying = false;
-      state.lastVoiceReplyEndedAt = Date.now();
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -619,7 +594,6 @@ function speakReply(text) {
 
       settled = true;
       state.isVoiceReplyPlaying = false;
-      state.lastVoiceReplyEndedAt = Date.now();
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -629,85 +603,4 @@ function speakReply(text) {
       });
     }, 1800);
   });
-}
-
-function queueVoiceRecognitionRestart() {
-  if (!state.isVoiceModeActive || state.isVoiceReplyPlaying || state.recognition || state.isVoiceRecognitionStarting) {
-    return;
-  }
-
-  state.isVoiceRecognitionStarting = true;
-  window.setTimeout(() => {
-    state.isVoiceRecognitionStarting = false;
-    if (!state.isVoiceModeActive || state.isVoiceReplyPlaying || state.recognition) {
-      return;
-    }
-
-    const restarted = startBrowserRecognition();
-    if (restarted) {
-      setStatus("Listening for your next question...");
-      return;
-    }
-
-    state.isVoiceModeActive = false;
-    voiceToggle.classList.remove("is-active");
-    voiceToggle.textContent = "Start Voice";
-    setStatus("Voice preview stopped because browser speech recognition is unavailable.");
-  }, 1400);
-}
-
-function shouldIgnoreVoiceTranscript(transcript) {
-  const now = Date.now();
-  const normalizedTranscript = normalizeSpeechForComparison(transcript);
-  const normalizedReply = normalizeSpeechForComparison(state.lastAssistantReply);
-
-  if (!normalizedTranscript) {
-    return false;
-  }
-
-  const withinCooldown =
-    state.lastVoiceReplyEndedAt > 0 && now - state.lastVoiceReplyEndedAt < 2500;
-
-  if (withinCooldown && normalizedReply && areSpeechStringsSimilar(normalizedTranscript, normalizedReply)) {
-    return true;
-  }
-
-  return false;
-}
-
-function normalizeSpeechForComparison(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/https?:\/\/\S+/g, " ")
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function areSpeechStringsSimilar(transcript, reply) {
-  if (!transcript || !reply) {
-    return false;
-  }
-
-  if (reply.includes(transcript) || transcript.includes(reply)) {
-    return true;
-  }
-
-  const transcriptWords = transcript.split(" ").filter(Boolean);
-  const replyWords = reply.split(" ").filter(Boolean);
-
-  if (transcriptWords.length === 0 || replyWords.length === 0) {
-    return false;
-  }
-
-  const transcriptSet = new Set(transcriptWords);
-  let overlapCount = 0;
-  for (const word of replyWords) {
-    if (transcriptSet.has(word)) {
-      overlapCount += 1;
-    }
-  }
-
-  const overlapRatio = overlapCount / Math.max(1, transcriptWords.length);
-  return overlapRatio >= 0.7;
 }
