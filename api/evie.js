@@ -591,6 +591,55 @@ function buildRequiredFieldFollowUpReply(field) {
   }
 }
 
+function maybeBuildAlreadyCapturedFieldReply(message, lead, firm) {
+  const lower = readString(message).toLowerCase();
+  if (!lower) {
+    return "";
+  }
+
+  const isClarifyingPriorCapture =
+    /\bi thought i (?:already )?(?:provided|gave|sent|shared)\b/.test(lower) ||
+    /\bdid you not get it\b/.test(lower) ||
+    /\bdidn'?t you get it\b/.test(lower) ||
+    /\byou already have it\b/.test(lower) ||
+    /\bi already (?:gave|sent|shared) (?:that|it)\b/.test(lower);
+
+  if (!isClarifyingPriorCapture) {
+    return "";
+  }
+
+  const hasName = Boolean(normalizeLeadValue(lead?.visitor_name));
+  const hasPhone = Boolean(normalizeLeadValue(lead?.visitor_phone));
+  const hasEmail = Boolean(normalizeLeadValue(lead?.visitor_email));
+
+  const likelyRefersToPhone =
+    hasPhone &&
+    !/\bemail\b/.test(lower) &&
+    (/\bphone\b/.test(lower) || /\bnumber\b/.test(lower) || !hasEmail);
+
+  if (!likelyRefersToPhone) {
+    return "";
+  }
+
+  const nextMissingContactField = getMissingContactFields(lead, firm).find(
+    (field) => field !== "visitor_phone",
+  );
+
+  if (nextMissingContactField === "visitor_email") {
+    return "I did get your phone number, thank you. Could you also share your email address so the firm can follow up with you?";
+  }
+
+  if (nextMissingContactField === "visitor_name") {
+    return "I did get your phone number, thank you. Could you also share your full name so the firm can note it correctly?";
+  }
+
+  if (hasName && hasPhone && hasEmail) {
+    return "I did get your phone number, thank you.";
+  }
+
+  return "I did get your phone number, thank you.";
+}
+
 function shouldPauseContactCaptureForUserQuestion(message, lead) {
   const lower = readString(message).toLowerCase();
   if (!lower) {
@@ -803,8 +852,12 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
       ? `${cleanReplyText} ${firm.consult.link}`
       : cleanReplyText;
   let requestContactCapture = parsed.request_contact_capture;
+  const alreadyCapturedFieldReply = maybeBuildAlreadyCapturedFieldReply(message, lead, firm);
 
-  if (shouldForceContactFieldFollowUp(lead, firm, requestContactCapture, message)) {
+  if (alreadyCapturedFieldReply) {
+    replyText = alreadyCapturedFieldReply;
+    requestContactCapture = getMissingContactFields(lead, firm).length > 0;
+  } else if (shouldForceContactFieldFollowUp(lead, firm, requestContactCapture, message)) {
     replyText = buildRequiredFieldFollowUpReply(missingContactFields[0]);
     requestContactCapture = true;
   } else if (shouldForceRequiredFieldFollowUp(lead, missingRequiredFields)) {
@@ -836,6 +889,7 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "Do not over-push qualification or contact capture.",
     "If contact capture has started and the user pauses to ask a general question about process, timeline, or what typically happens, answer that question helpfully first instead of repeating the missing contact field immediately.",
     "After answering a mid-intake general question, you may return to the next missing contact field on a later turn rather than in the same sentence.",
+    "If the user indicates they already provided a contact detail and the extracted lead record already contains it, acknowledge that you have it and move to the next missing field instead of asking for the same field again.",
     "If the user is asking only for firm information, answer it directly and do not start intake or contact capture unless they shift into their own matter.",
     "Pure firm-information questions include office location, phone number, attorneys, practice areas, consultation availability, consultation cost, contingency-fee messaging, and general contact process.",
     "Questions about whether the user can book, schedule, request, or arrange a consultation are still firm-information questions unless the user also starts describing their own matter.",
