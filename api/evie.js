@@ -564,8 +564,12 @@ function shouldForceRequiredFieldFollowUp(lead, missingRequiredFields) {
   return Boolean(lead.visitor_name || lead.visitor_phone || lead.visitor_email);
 }
 
-function shouldForceContactFieldFollowUp(lead, firm, requestContactCapture) {
+function shouldForceContactFieldFollowUp(lead, firm, requestContactCapture, message) {
   if (!requestContactCapture) {
+    return false;
+  }
+
+  if (shouldPauseContactCaptureForUserQuestion(message, lead)) {
     return false;
   }
 
@@ -585,6 +589,39 @@ function buildRequiredFieldFollowUpReply(field) {
     default:
       return "Thank you. Could you also share that last detail so the firm can follow up?";
   }
+}
+
+function shouldPauseContactCaptureForUserQuestion(message, lead) {
+  const lower = readString(message).toLowerCase();
+  if (!lower) {
+    return false;
+  }
+
+  const contactFlowActive = Boolean(
+    normalizeLeadValue(lead?.visitor_name) ||
+    normalizeLeadValue(lead?.visitor_phone) ||
+    normalizeLeadValue(lead?.visitor_email),
+  );
+
+  if (!contactFlowActive) {
+    return false;
+  }
+
+  const likelyProcessQuestion =
+    /\bwhat happens\b/.test(lower) ||
+    /\bhow does\b/.test(lower) ||
+    /\btypical\b/.test(lower) ||
+    /\bcan we talk\b/.test(lower) ||
+    /\btell me (?:a little )?more\b/.test(lower) ||
+    /\bwhat might happen\b/.test(lower) ||
+    /\binjury case\b/.test(lower) ||
+    /\bcase like this\b/.test(lower) ||
+    /\bwhat should i expect\b/.test(lower) ||
+    /\bhow long\b/.test(lower);
+
+  const containsRequestedContactDetail = Boolean(detectContact(message)?.phone || detectContact(message)?.email);
+
+  return likelyProcessQuestion && !containsRequestedContactDetail;
 }
 
 function buildLeadWebhookPayload({ requestMeta, lead, priorLead, result, transcript, firm, deliveryDecision }) {
@@ -767,7 +804,7 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
       : cleanReplyText;
   let requestContactCapture = parsed.request_contact_capture;
 
-  if (shouldForceContactFieldFollowUp(lead, firm, requestContactCapture)) {
+  if (shouldForceContactFieldFollowUp(lead, firm, requestContactCapture, message)) {
     replyText = buildRequiredFieldFollowUpReply(missingContactFields[0]);
     requestContactCapture = true;
   } else if (shouldForceRequiredFieldFollowUp(lead, missingRequiredFields)) {
@@ -797,6 +834,8 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "Answer the user's actual question first when possible.",
     "Do not reset to a generic opener after factual follow-up answers.",
     "Do not over-push qualification or contact capture.",
+    "If contact capture has started and the user pauses to ask a general question about process, timeline, or what typically happens, answer that question helpfully first instead of repeating the missing contact field immediately.",
+    "After answering a mid-intake general question, you may return to the next missing contact field on a later turn rather than in the same sentence.",
     "If the user is asking only for firm information, answer it directly and do not start intake or contact capture unless they shift into their own matter.",
     "Pure firm-information questions include office location, phone number, attorneys, practice areas, consultation availability, consultation cost, contingency-fee messaging, and general contact process.",
     "Questions about whether the user can book, schedule, request, or arrange a consultation are still firm-information questions unless the user also starts describing their own matter.",
