@@ -6,6 +6,7 @@ const state = {
   activeSpeechUtterance: null,
   conversationHistory: [],
   hasRenderedWelcome: false,
+  lastAssistantReply: "",
   voicePreview: {
     enabled: false,
     currentFirmEnabled: false,
@@ -92,6 +93,7 @@ const modeChatButton = document.querySelector("#mode-chat");
 const modeVoiceButton = document.querySelector("#mode-voice");
 const voicePanel = document.querySelector("#voice-panel");
 const voiceCopy = document.querySelector(".voice-copy");
+const voiceReplayButton = document.querySelector("#voice-replay");
 
 updateVoicePreviewUi();
 
@@ -110,6 +112,19 @@ jumpToWidgetButton.addEventListener("click", () => {
 
 modeChatButton.addEventListener("click", () => setMode("chat"));
 modeVoiceButton.addEventListener("click", () => setMode("voice"));
+voiceReplayButton.addEventListener("click", async () => {
+  if (!state.lastAssistantReply) {
+    setStatus("There is no reply available to replay yet.");
+    return;
+  }
+
+  const playback = await speakReply(state.lastAssistantReply);
+  setStatus(
+    playback.spoken
+      ? "Replaying Evie's last reply aloud."
+      : `Replay unavailable (${playback.reason}).`,
+  );
+});
 loadWidgetConfig();
 
 composer.addEventListener("submit", async (event) => {
@@ -195,7 +210,7 @@ async function submitCurrentMessage() {
 
   const channel = state.mode === "voice" ? "voice" : "chat";
   const response = await providers[state.provider].sendText(message, { channel });
-  finalizeAssistantTurn(response, { channel, speakReply: channel === "voice" });
+  await finalizeAssistantTurn(response, { channel, speakReply: channel === "voice" });
 }
 
 function addUserMessage(content) {
@@ -284,7 +299,7 @@ function startBrowserRecognition() {
         utteranceMode: state.voicePreview.utteranceMode,
       },
     });
-    finalizeAssistantTurn(response, { channel: "voice", speakReply: true });
+    await finalizeAssistantTurn(response, { channel: "voice", speakReply: true });
     state.isVoiceModeActive = false;
     voiceToggle.classList.remove("is-active");
     voiceToggle.textContent = "Start Voice";
@@ -446,24 +461,31 @@ function updateVoicePreviewUi() {
   }
 
   voiceToggle.disabled = !isEnabled;
+  voiceReplayButton.disabled = !isEnabled || !state.lastAssistantReply;
   voiceToggle.textContent = "Start Voice";
   voiceToggle.classList.remove("is-active");
   voicePanel.classList.toggle("is-hidden", state.mode !== "voice" || !isEnabled);
 }
 
-function finalizeAssistantTurn(response, options) {
+async function finalizeAssistantTurn(response, options) {
   addAgentMessage(response.text);
+  state.lastAssistantReply = response.text;
+  voiceReplayButton.disabled = !state.voicePreview.enabled || !state.voicePreview.currentFirmEnabled;
   state.conversationHistory.push({ role: "assistant", content: response.text });
 
+  let playback = { spoken: false, reason: "not_requested" };
   if (options.speakReply) {
-    speakReply(response.text);
+    playback = await speakReply(response.text);
   }
 
-  setStatus(buildTurnStatus(response, options));
+  setStatus(buildTurnStatus(response, options, playback));
   console.info("Evie turn observability", response.meta?.observability || {});
+  if (options.channel === "voice" && !playback.spoken) {
+    console.warn("Evie voice playback unavailable", playback);
+  }
 }
 
-function buildTurnStatus(response, options) {
+function buildTurnStatus(response, options, playback = { spoken: false, reason: "not_requested" }) {
   const webhookStatus = formatWebhookStatus(response.meta?.webhook_delivery);
   const runtime = response.meta?.observability?.runtime || {};
   const latencyText =
@@ -484,7 +506,11 @@ function buildTurnStatus(response, options) {
   }
 
   if (options.channel === "voice") {
-    const spokenSuffix = options.speakReply ? " Reply spoken aloud." : "";
+    const spokenSuffix = options.speakReply
+      ? playback.spoken
+        ? " Reply spoken aloud."
+        : ` Reply text is in the thread, but audio did not start (${playback.reason}).`
+      : "";
     return webhookStatus
       ? `Voice turn completed via ${providers[state.provider].label}${latencyText}.${spokenSuffix} ${webhookStatus}`
       : `Voice turn completed via ${providers[state.provider].label}${latencyText}.${spokenSuffix}`;
@@ -505,19 +531,74 @@ function speakReply(text) {
   stopSpeechPlayback();
 
   if (!("speechSynthesis" in window) || typeof window.SpeechSynthesisUtterance !== "function") {
-    return;
+    return Promise.resolve({ spoken: false, reason: "speech_synthesis_unavailable" });
   }
 
-  const utterance = new window.SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-  utterance.addEventListener("end", () => {
-    if (state.activeSpeechUtterance === utterance) {
+  return new Promise((resolve) => {
+    const utterance = new window.SpeechSynthesisUtterance(text);
+    let started = false;
+    let settled = false;
+
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    utterance.addEventListener("start", () => {
+      started = true;
+      if (!settled) {
+        settled = true;
+        resolve({ spoken: true, reason: "" });
+      }
+    });
+    utterance.addEventListener("error", (event) => {
+      if (!settled) {
+        settled = true;
+        resolve({ spoken: false, reason: event.error || "speech_synthesis_error" });
+      }
+      if (state.activeSpeechUtterance === utterance) {
+        state.activeSpeechUtterance = null;
+      }
+    });
+    utterance.addEventListener("end", () => {
+      if (!settled) {
+        settled = true;
+        resolve({
+          spoken: started,
+          reason: started ? "" : "speech_synthesis_ended_without_start",
+        });
+      }
+      if (state.activeSpeechUtterance === utterance) {
+        state.activeSpeechUtterance = null;
+      }
+    });
+
+    state.activeSpeechUtterance = utterance;
+
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.resume();
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
       state.activeSpeechUtterance = null;
+      resolve({
+        spoken: false,
+        reason: error instanceof Error ? error.message : "speech_synthesis_exception",
+      });
+      return;
     }
+
+    window.setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      const isSpeaking =
+        window.speechSynthesis.speaking || window.speechSynthesis.pending || started;
+      settled = true;
+      resolve({
+        spoken: isSpeaking,
+        reason: isSpeaking ? "" : "speech_synthesis_not_started",
+      });
+    }, 1500);
   });
-  state.activeSpeechUtterance = utterance;
-  window.speechSynthesis.speak(utterance);
 }
