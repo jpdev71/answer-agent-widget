@@ -2,6 +2,8 @@ const state = {
   provider: "evie-api",
   mode: "chat",
   isVoiceModeActive: false,
+  isVoiceReplyPlaying: false,
+  isVoiceRecognitionStarting: false,
   recognition: null,
   activeSpeechUtterance: null,
   conversationHistory: [],
@@ -75,7 +77,7 @@ const providers = {
         return "Voice preview is not enabled for this firm yet.";
       }
 
-      return "Voice preview is listening for one question, then routing the transcript through the same Evie backend used for chat.";
+      return "Voice preview is now in live conversation mode. Evie will keep listening until you press Stop Voice.";
     },
   },
 };
@@ -149,7 +151,7 @@ voiceToggle.addEventListener("click", async () => {
 
   state.isVoiceModeActive = !state.isVoiceModeActive;
   voiceToggle.classList.toggle("is-active", state.isVoiceModeActive);
-  voiceToggle.textContent = state.isVoiceModeActive ? "Stop Listening" : "Start Voice";
+  voiceToggle.textContent = state.isVoiceModeActive ? "Stop Voice" : "Start Voice";
 
   if (!state.isVoiceModeActive) {
     resetVoiceTransport();
@@ -162,7 +164,7 @@ voiceToggle.addEventListener("click", async () => {
 
   const recognitionStarted = startBrowserRecognition();
   if (recognitionStarted) {
-    setStatus("Listening for one voice question...");
+    setStatus("Listening for your next question...");
   } else {
     state.isVoiceModeActive = false;
     voiceToggle.classList.remove("is-active");
@@ -289,36 +291,43 @@ function startBrowserRecognition() {
     addUserMessage(transcript);
     state.conversationHistory.push({ role: "user", content: transcript });
     setStatus("Processing voice transcript...");
+    stopBrowserRecognition();
     const response = await providers[state.provider].sendText(transcript, {
       channel: "voice",
       voiceMeta: {
-        inputMode: "single_utterance",
+        inputMode: "continuous_session",
         sttProvider: state.voicePreview.sttProvider,
         ttsProvider: state.voicePreview.ttsProvider,
         transport: state.voicePreview.transport,
-        utteranceMode: state.voicePreview.utteranceMode,
+        utteranceMode: "continuous_session",
       },
     });
     await finalizeAssistantTurn(response, { channel: "voice", speakReply: true });
-    state.isVoiceModeActive = false;
-    voiceToggle.classList.remove("is-active");
-    voiceToggle.textContent = "Start Voice";
+    queueVoiceRecognitionRestart();
   });
 
   state.recognition.addEventListener("error", (event) => {
-    state.isVoiceModeActive = false;
-    voiceToggle.classList.remove("is-active");
-    voiceToggle.textContent = "Start Voice";
+    if (
+      state.isVoiceModeActive &&
+      event.error !== "aborted" &&
+      event.error !== "no-speech" &&
+      event.error !== "audio-capture"
+    ) {
+      state.isVoiceModeActive = false;
+      voiceToggle.classList.remove("is-active");
+      voiceToggle.textContent = "Start Voice";
+    }
     setStatus(`Browser speech recognition error: ${event.error}`);
+    if (state.isVoiceModeActive && (event.error === "no-speech" || event.error === "aborted")) {
+      queueVoiceRecognitionRestart();
+    }
   });
 
   state.recognition.addEventListener("end", () => {
     state.recognition = null;
 
-    if (state.isVoiceModeActive) {
-      state.isVoiceModeActive = false;
-      voiceToggle.classList.remove("is-active");
-      voiceToggle.textContent = "Start Voice";
+    if (state.isVoiceModeActive && !state.isVoiceReplyPlaying) {
+      queueVoiceRecognitionRestart();
     }
   });
 
@@ -328,12 +337,14 @@ function startBrowserRecognition() {
 
 function stopBrowserRecognition() {
   if (!state.recognition) {
+    state.isVoiceRecognitionStarting = false;
     return;
   }
 
   state.recognition.onend = null;
   state.recognition.stop();
   state.recognition = null;
+  state.isVoiceRecognitionStarting = false;
 }
 
 function stopSpeechPlayback() {
@@ -508,7 +519,7 @@ function buildTurnStatus(response, options, playback = { spoken: false, reason: 
   if (options.channel === "voice") {
     const spokenSuffix = options.speakReply
       ? playback.spoken
-        ? " Reply spoken aloud."
+        ? " Reply spoken aloud. Still listening."
         : ` Reply text is in the thread, but audio did not start (${playback.reason}).`
       : "";
     return webhookStatus
@@ -538,6 +549,7 @@ function speakReply(text) {
     const utterance = new window.SpeechSynthesisUtterance(text);
     let started = false;
     let settled = false;
+    state.isVoiceReplyPlaying = true;
 
     utterance.lang = "en-US";
     utterance.rate = 1;
@@ -555,6 +567,7 @@ function speakReply(text) {
         settled = true;
         resolve({ spoken: false, reason: event.error || "speech_synthesis_error" });
       }
+      state.isVoiceReplyPlaying = false;
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -567,6 +580,7 @@ function speakReply(text) {
           reason: started ? "" : "speech_synthesis_ended_without_start",
         });
       }
+      state.isVoiceReplyPlaying = false;
       if (state.activeSpeechUtterance === utterance) {
         state.activeSpeechUtterance = null;
       }
@@ -579,6 +593,7 @@ function speakReply(text) {
       window.speechSynthesis.resume();
       window.speechSynthesis.speak(utterance);
     } catch (error) {
+      state.isVoiceReplyPlaying = false;
       state.activeSpeechUtterance = null;
       resolve({
         spoken: false,
@@ -601,4 +616,29 @@ function speakReply(text) {
       });
     }, 1500);
   });
+}
+
+function queueVoiceRecognitionRestart() {
+  if (!state.isVoiceModeActive || state.isVoiceReplyPlaying || state.recognition || state.isVoiceRecognitionStarting) {
+    return;
+  }
+
+  state.isVoiceRecognitionStarting = true;
+  window.setTimeout(() => {
+    state.isVoiceRecognitionStarting = false;
+    if (!state.isVoiceModeActive || state.isVoiceReplyPlaying || state.recognition) {
+      return;
+    }
+
+    const restarted = startBrowserRecognition();
+    if (restarted) {
+      setStatus("Listening for your next question...");
+      return;
+    }
+
+    state.isVoiceModeActive = false;
+    voiceToggle.classList.remove("is-active");
+    voiceToggle.textContent = "Start Voice";
+    setStatus("Voice preview stopped because browser speech recognition is unavailable.");
+  }, 350);
 }
