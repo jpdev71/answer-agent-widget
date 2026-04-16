@@ -673,6 +673,60 @@ function shouldPauseContactCaptureForUserQuestion(message, lead) {
   return likelyProcessQuestion && !containsRequestedContactDetail;
 }
 
+function shouldAnswerScenarioQuestionBeforeContactCapture(message, lead) {
+  const lower = readString(message).toLowerCase();
+  if (!lower) {
+    return false;
+  }
+
+  const contactFlowActive = Boolean(
+    normalizeLeadValue(lead?.visitor_name) ||
+    normalizeLeadValue(lead?.visitor_phone) ||
+    normalizeLeadValue(lead?.visitor_email),
+  );
+
+  if (contactFlowActive) {
+    return false;
+  }
+
+  const asksForHelpOrFit =
+    /\bcould (?:the )?firm help\b/.test(lower) ||
+    /\bcan (?:the )?firm help\b/.test(lower) ||
+    /\bis that something (?:the )?firm could help with\b/.test(lower) ||
+    /\bdo you handle\b/.test(lower);
+
+  const asksForNextStepsOrProcess =
+    /\bnext steps\b/.test(lower) ||
+    /\bwhat should i do next\b/.test(lower) ||
+    /\bwhat would (?:be|the) next steps\b/.test(lower) ||
+    /\bwhat happens\b/.test(lower) ||
+    /\bwhat would happen\b/.test(lower);
+
+  const describesPotentialMatter =
+    /\baccident\b/.test(lower) ||
+    /\bcrosswalk\b/.test(lower) ||
+    /\bran a stop sign\b/.test(lower) ||
+    /\bhit me\b/.test(lower) ||
+    /\binjured\b/.test(lower) ||
+    /\bpedestrian\b/.test(lower);
+
+  return (asksForHelpOrFit || asksForNextStepsOrProcess) && describesPotentialMatter;
+}
+
+function buildScenarioQuestionAnswerFirstReply(lead, firm) {
+  const stateText = normalizeLeadValue(lead?.incident_state);
+  const stateClause = stateText
+    ? ` If this happened in ${stateText}, it sounds like the kind of personal injury matter the firm may be able to review.`
+    : " If this happened in Georgia, it sounds like the kind of personal injury matter the firm may be able to review.";
+
+  return (
+    "Yes, that sounds like the kind of injury scenario the firm may be able to help with." +
+    stateClause +
+    " Typical next steps are to get medical care, document what happened, keep records of treatment and expenses, and be careful about detailed insurance statements before the facts are reviewed." +
+    " If you'd like, I can ask one short question about where it happened or whether you got medical treatment."
+  );
+}
+
 function buildLeadWebhookPayload({ requestMeta, lead, priorLead, result, transcript, firm, deliveryDecision }) {
   const currentDeliveryState = buildDeliveryState(lead, firm);
   const previousDeliveryState = buildDeliveryState(priorLead, firm);
@@ -853,8 +907,12 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
       : cleanReplyText;
   let requestContactCapture = parsed.request_contact_capture;
   const alreadyCapturedFieldReply = maybeBuildAlreadyCapturedFieldReply(message, lead, firm);
+  const answerScenarioFirst = shouldAnswerScenarioQuestionBeforeContactCapture(message, lead);
 
-  if (alreadyCapturedFieldReply) {
+  if (answerScenarioFirst) {
+    replyText = buildScenarioQuestionAnswerFirstReply(lead, firm);
+    requestContactCapture = false;
+  } else if (alreadyCapturedFieldReply) {
     replyText = alreadyCapturedFieldReply;
     requestContactCapture = getMissingContactFields(lead, firm).length > 0;
   } else if (shouldForceContactFieldFollowUp(lead, firm, requestContactCapture, message)) {
@@ -887,6 +945,7 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "Answer the user's actual question first when possible.",
     "Do not reset to a generic opener after factual follow-up answers.",
     "Do not over-push qualification or contact capture.",
+    "If the user describes a potential injury scenario and asks whether the firm could help or what the next steps would be, answer that fit-and-process question first before asking for contact details.",
     "If contact capture has started and the user pauses to ask a general question about process, timeline, or what typically happens, answer that question helpfully first instead of repeating the missing contact field immediately.",
     "After answering a mid-intake general question, you may return to the next missing contact field on a later turn rather than in the same sentence.",
     "If the user indicates they already provided a contact detail and the extracted lead record already contains it, acknowledge that you have it and move to the next missing field instead of asking for the same field again.",
