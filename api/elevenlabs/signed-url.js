@@ -77,6 +77,20 @@ function extractUpstreamError(payload) {
     return payload.detail.trim();
   }
 
+  if (payload.detail && typeof payload.detail === "object") {
+    if (typeof payload.detail.message === "string" && payload.detail.message.trim()) {
+      const status =
+        typeof payload.detail.status === "string" && payload.detail.status.trim()
+          ? payload.detail.status.trim()
+          : "";
+      return status ? `${status}: ${payload.detail.message.trim()}` : payload.detail.message.trim();
+    }
+
+    if (typeof payload.detail.status === "string" && payload.detail.status.trim()) {
+      return payload.detail.status.trim();
+    }
+  }
+
   if (typeof payload.message === "string" && payload.message.trim()) {
     return payload.message.trim();
   }
