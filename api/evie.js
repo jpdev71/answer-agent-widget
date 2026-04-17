@@ -7,16 +7,9 @@ let cachedVersion = "";
 let cachedGroundingBundle = null;
 let cachedBuildInfo = null;
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   setCorsHeaders(res);
-  const requestStartedAt = Date.now();
-  const runtime = getFirmRuntimeConfig();
-  const firm = runtime.config;
-  const adapter = runtime.adapter;
-  const promptBuild = getPromptBuild(firm);
-  const promptVersion = promptBuild.version;
-  const groundingBundle = getGroundingBundle(firm, promptVersion);
-  const voicePreview = getVoicePreviewConfig(firm);
+  const runtimeState = getEvieRuntimeState();
 
   if (req.method === "OPTIONS") {
     res.status(204).end();
@@ -24,17 +17,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    res.status(200).json({
-      ok: true,
-      profile: runtime.selectedProfile,
-      agent: firm.agent.name,
-      welcome_message: firm.agent.welcomeMessage,
-      mode: firm.practice.answerStyle || "helpful_first",
-      firm: buildFirmResponseSummary(firm, runtime.validationWarnings),
-      prompt_version: promptVersion,
-      live_build: buildLiveBuildResponse(promptBuild),
-      voice_preview: voicePreview,
-    });
+    res.status(200).json(buildEvieConfigResponse(runtimeState));
     return;
   }
 
@@ -43,11 +26,69 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const body = parseBody(req.body);
+  try {
+    const payload = await processEvieTurn(req.body, runtimeState);
+    res.status(200).json(payload);
+  } catch (error) {
+    res.status(error?.statusCode || 500).json({ error: error?.message || "Unexpected error." });
+  }
+}
+
+module.exports = handler;
+module.exports.processEvieTurn = processEvieTurn;
+module.exports.buildEvieConfigResponse = buildEvieConfigResponse;
+
+function setCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function getEvieRuntimeState() {
+  const runtime = getFirmRuntimeConfig();
+  const firm = runtime.config;
+  const adapter = runtime.adapter;
+  const promptBuild = getPromptBuild(firm);
+  const promptVersion = promptBuild.version;
+  const groundingBundle = getGroundingBundle(firm, promptVersion);
+  const voicePreview = getVoicePreviewConfig(firm);
+
+  return {
+    runtime,
+    firm,
+    adapter,
+    promptBuild,
+    promptVersion,
+    groundingBundle,
+    voicePreview,
+  };
+}
+
+function buildEvieConfigResponse(runtimeState = getEvieRuntimeState()) {
+  return {
+    ok: true,
+    profile: runtimeState.runtime.selectedProfile,
+    agent: runtimeState.firm.agent.name,
+    welcome_message: runtimeState.firm.agent.welcomeMessage,
+    mode: runtimeState.firm.practice.answerStyle || "helpful_first",
+    firm: buildFirmResponseSummary(
+      runtimeState.firm,
+      runtimeState.runtime.validationWarnings,
+    ),
+    prompt_version: runtimeState.promptVersion,
+    live_build: buildLiveBuildResponse(runtimeState.promptBuild),
+    voice_preview: runtimeState.voicePreview,
+  };
+}
+
+async function processEvieTurn(bodyInput, runtimeState = getEvieRuntimeState()) {
+  const requestStartedAt = Date.now();
+  const { runtime, firm, adapter, promptBuild, promptVersion, groundingBundle, voicePreview } =
+    runtimeState;
+  const body = parseBody(bodyInput);
   const message = readString(body.message);
   if (!message) {
-    res.status(400).json({ error: "A message is required." });
-    return;
+    throw createHttpError(400, "A message is required.");
   }
 
   const requestMeta = extractRequestMeta(body);
@@ -71,7 +112,7 @@ module.exports = async function handler(req, res) {
   });
   const latencyMs = Date.now() - requestStartedAt;
 
-  res.status(200).json({
+  return {
     reply_text: result.replyText,
     qualification_path: result.qualificationPath,
     request_contact_capture: result.requestContactCapture,
@@ -100,13 +141,13 @@ module.exports = async function handler(req, res) {
         voicePreview,
       },
     ),
-  });
-};
+  };
+}
 
-function setCorsHeaders(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+function createHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 }
 
 function parseBody(body) {
