@@ -757,6 +757,43 @@ function shouldAnswerScenarioQuestionBeforeContactCapture(message, lead) {
   return (asksForHelpOrFit || asksForNextStepsOrProcess) && describesPotentialMatter;
 }
 
+function shouldKeepGeneralProcessQuestionInformational(message, lead) {
+  const lower = readString(message).toLowerCase();
+  if (!lower) {
+    return false;
+  }
+
+  const contactFlowActive = Boolean(
+    normalizeLeadValue(lead?.visitor_name) ||
+    normalizeLeadValue(lead?.visitor_phone) ||
+    normalizeLeadValue(lead?.visitor_email),
+  );
+
+  if (contactFlowActive) {
+    return false;
+  }
+
+  const asksBroadProcessQuestion =
+    /\bwhat typically happens\b/.test(lower) ||
+    /\bwhat usually happens\b/.test(lower) ||
+    /\bhow does\b[\w\s]{0,30}\bpersonal injury case\b/.test(lower) ||
+    /\bwhat should someone expect\b/.test(lower) ||
+    /\btell me (?:just )?(?:a little )?about\b[\w\s]{0,25}\bwhat typically happens\b/.test(lower) ||
+    (/\bpersonal injury case\b/.test(lower) && /\bwhat happens\b/.test(lower));
+
+  const asksForOwnNextStep =
+    /\bwhat should i do next\b/.test(lower) ||
+    /\bwhat are my next steps\b/.test(lower) ||
+    /\bcan the firm help\b/.test(lower) ||
+    /\bcould the firm help\b/.test(lower) ||
+    /\bdo i have a case\b/.test(lower) ||
+    /\bcan i sue\b/.test(lower) ||
+    /\bshould i talk to a lawyer\b/.test(lower) ||
+    /\bcan i speak with someone\b/.test(lower);
+
+  return asksBroadProcessQuestion && !asksForOwnNextStep;
+}
+
 function buildScenarioQuestionAnswerFirstReply(lead, firm) {
   const stateText = normalizeLeadValue(lead?.incident_state);
   const stateClause = stateText
@@ -769,6 +806,18 @@ function buildScenarioQuestionAnswerFirstReply(lead, firm) {
     " Typical next steps are to get medical care, document what happened, keep records of treatment and expenses, and be careful about detailed insurance statements before the facts are reviewed." +
     " If you'd like, I can ask one short question about where it happened or whether you got medical treatment."
   );
+}
+
+function stripContactCaptureFollowUp(replyText) {
+  const text = readString(replyText);
+  if (!text) {
+    return text;
+  }
+
+  const contactQuestionPattern =
+    /\s*(?:Now,?\s*)?(?:Could you|Can you|Please|Would you)\s+(?:also\s+)?(?:share|provide|tell me)\s+your\s+(?:full\s+name|name|phone number|best phone number|email address|email)(?:[^.?!]*[.?!])?\s*$/i;
+  const stripped = text.replace(contactQuestionPattern, "").trim();
+  return stripped || text;
 }
 
 function buildLeadWebhookPayload({ requestMeta, lead, priorLead, result, transcript, firm, deliveryDecision }) {
@@ -950,10 +999,17 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
       ? `${cleanReplyText} ${firm.consult.link}`
       : cleanReplyText;
   let requestContactCapture = parsed.request_contact_capture;
+  let leadFieldsNeeded = parsed.lead_fields_needed;
   const alreadyCapturedFieldReply = maybeBuildAlreadyCapturedFieldReply(message, lead, firm);
   const answerScenarioFirst = shouldAnswerScenarioQuestionBeforeContactCapture(message, lead);
+  const keepGeneralProcessQuestionInformational =
+    shouldKeepGeneralProcessQuestionInformational(message, lead);
 
-  if (answerScenarioFirst) {
+  if (keepGeneralProcessQuestionInformational) {
+    replyText = stripContactCaptureFollowUp(replyText);
+    requestContactCapture = false;
+    leadFieldsNeeded = [];
+  } else if (answerScenarioFirst) {
     replyText = buildScenarioQuestionAnswerFirstReply(lead, firm);
     requestContactCapture = false;
   } else if (alreadyCapturedFieldReply) {
@@ -972,7 +1028,7 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
     qualificationPath: parsed.qualification_path,
     requestContactCapture,
     offerConsultLink: safeOfferConsultLink,
-    leadFieldsNeeded: parsed.lead_fields_needed,
+    leadFieldsNeeded,
     responseSource: "openai",
     fallbackReason: "",
   };
@@ -990,6 +1046,8 @@ function buildOpenAIInstructions(lead, firm, adapter, groundingText) {
     "Do not reset to a generic opener after factual follow-up answers.",
     "Do not over-push qualification or contact capture.",
     "If the user describes a potential injury scenario and asks whether the firm could help or what the next steps would be, answer that fit-and-process question first before asking for contact details.",
+    "Broad educational questions about what typically happens in a personal injury case are not intake triggers, even if the user gives a hypothetical or example accident.",
+    "For those broad educational process questions, answer helpfully and stop. Do not request contact capture, do not set lead_fields_needed, and do not ask for a name, phone number, or email in the same reply.",
     "If contact capture has started and the user pauses to ask a general question about process, timeline, or what typically happens, answer that question helpfully first instead of repeating the missing contact field immediately.",
     "After answering a mid-intake general question, you may return to the next missing contact field on a later turn rather than in the same sentence.",
     "If the user indicates they already provided a contact detail and the extracted lead record already contains it, acknowledge that you have it and move to the next missing field instead of asking for the same field again.",
