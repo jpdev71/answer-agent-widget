@@ -820,6 +820,31 @@ function stripContactCaptureFollowUp(replyText) {
   return stripped || text;
 }
 
+function maybeBuildOutOfStateScopeReply(lead, firm) {
+  const incidentState = normalizeLeadValue(lead?.incident_state);
+  if (!incidentState) {
+    return "";
+  }
+
+  const qualifiedStates = Array.isArray(firm.qualification?.qualifiedStates)
+    ? firm.qualification.qualifiedStates
+    : [];
+  if (qualifiedStates.includes(incidentState) || firm.practice?.outOfStatePolicy !== "exception_only") {
+    return "";
+  }
+
+  const hasContactInfo = Boolean(
+    normalizeLeadValue(lead?.visitor_name) ||
+    normalizeLeadValue(lead?.visitor_phone) ||
+    normalizeLeadValue(lead?.visitor_email),
+  );
+  if (hasContactInfo) {
+    return "";
+  }
+
+  return `If this happened in ${incidentState}, I want to set expectations clearly: the firm mainly reviews Georgia injury matters. I can still share general information about the process, but for legal advice or representation you would usually want an attorney licensed in ${incidentState}.`;
+}
+
 function buildLeadWebhookPayload({ requestMeta, lead, priorLead, result, transcript, firm, deliveryDecision }) {
   const currentDeliveryState = buildDeliveryState(lead, firm);
   const previousDeliveryState = buildDeliveryState(priorLead, firm);
@@ -1004,8 +1029,13 @@ async function buildOpenAIReply(message, lead, transcript, firm, adapter, ground
   const answerScenarioFirst = shouldAnswerScenarioQuestionBeforeContactCapture(message, lead);
   const keepGeneralProcessQuestionInformational =
     shouldKeepGeneralProcessQuestionInformational(message, lead);
+  const outOfStateScopeReply = maybeBuildOutOfStateScopeReply(lead, firm);
 
-  if (keepGeneralProcessQuestionInformational) {
+  if (outOfStateScopeReply) {
+    replyText = outOfStateScopeReply;
+    requestContactCapture = false;
+    leadFieldsNeeded = [];
+  } else if (keepGeneralProcessQuestionInformational) {
     replyText = stripContactCaptureFollowUp(replyText);
     requestContactCapture = false;
     leadFieldsNeeded = [];
