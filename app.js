@@ -221,7 +221,7 @@ async function submitCurrentMessage() {
   messageInput.value = "";
   setStatus("Thinking...");
 
-  const channel = state.mode === "voice" ? "voice" : "chat";
+  const channel = state.mode === "voice" && !isElevenLabsVoiceTransport() ? "voice" : "chat";
   const response = await providers[state.provider].sendText(message, { channel });
   await finalizeAssistantTurn(response, { channel, speakReply: channel === "voice" });
 }
@@ -497,6 +497,7 @@ async function ensureElevenLabsRuntime() {
   }
 
   setStatus("Starting ElevenLabs voice runtime...");
+  renderElevenLabsRuntimeNotice("Loading ElevenLabs voice...");
 
   try {
     await loadElevenLabsWidgetScript();
@@ -506,6 +507,9 @@ async function ensureElevenLabsRuntime() {
     setStatus("ElevenLabs voice runtime ready.");
   } catch (error) {
     console.error("Failed to initialize ElevenLabs voice runtime", error);
+    renderElevenLabsRuntimeNotice(
+      `Voice runtime unavailable: ${error instanceof Error ? error.message : "unknown_error"}.`,
+    );
     setStatus(
       `Voice runtime unavailable (${error instanceof Error ? error.message : "unknown_error"}).`,
     );
@@ -576,6 +580,14 @@ function mountElevenLabsWidget(signedUrl) {
   widget.setAttribute("speaking-text", "Evie is speaking");
   widget.setAttribute("markdown-link-allowed-hosts", "*");
   elevenLabsRuntime.append(widget);
+}
+
+function renderElevenLabsRuntimeNotice(message) {
+  elevenLabsRuntime.innerHTML = "";
+  const notice = document.createElement("p");
+  notice.className = "elevenlabs-runtime-notice";
+  notice.textContent = message;
+  elevenLabsRuntime.append(notice);
 }
 
 async function finalizeAssistantTurn(response, options) {

@@ -313,7 +313,11 @@ h1 {
 
 .elevenlabs-runtime {
   margin-top: 14px;
-  min-height: 120px;
+  min-height: 180px;
+  border: 1px solid rgba(18, 60, 99, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
 }
 
 .elevenlabs-runtime.is-hidden {
@@ -323,6 +327,14 @@ h1 {
 .elevenlabs-runtime elevenlabs-convai {
   width: 100%;
   display: block;
+  min-height: 420px;
+}
+
+.elevenlabs-runtime-notice {
+  margin: 0;
+  padding: 16px;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .message-list {
