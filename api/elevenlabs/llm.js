@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const evie = require("../evie");
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   setCorsHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -25,6 +25,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    assertAuthorizedRequest(req);
     const body = parseBody(req.body);
     const messages = normalizeMessages(body.messages);
     const currentMessage = getLastUserMessage(messages);
@@ -47,12 +48,34 @@ module.exports = async function handler(req, res) {
       error: error?.message || "Unexpected error.",
     });
   }
-};
+}
+
+module.exports = handler;
 
 function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-evie-transport-key",
+  );
+}
+
+function assertAuthorizedRequest(req) {
+  const configuredSecret = readString(process.env.ELEVENLABS_LLM_SHARED_SECRET);
+  if (!configuredSecret) {
+    return;
+  }
+
+  const headerSecret =
+    readString(req.headers?.["x-evie-transport-key"]) ||
+    readBearerToken(req.headers?.authorization);
+
+  if (headerSecret !== configuredSecret) {
+    const error = new Error("Unauthorized.");
+    error.statusCode = 401;
+    throw error;
+  }
 }
 
 function parseBody(body) {
@@ -73,6 +96,12 @@ function parseBody(body) {
 
 function readString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readBearerToken(value) {
+  const raw = readString(value);
+  const match = raw.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
 }
 
 function normalizeMessages(messages) {
