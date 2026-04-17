@@ -40,7 +40,12 @@ module.exports = async function handler(req, res) {
 
     const payload = await response.json();
     if (!response.ok) {
-      res.status(response.status).json(payload);
+      res.status(response.status).json({
+        error: "Failed to fetch ElevenLabs signed URL.",
+        upstream_status: response.status,
+        upstream_error: extractUpstreamError(payload),
+        upstream_payload: payload,
+      });
       return;
     }
 
@@ -61,4 +66,34 @@ function setCorsHeaders(res) {
 
 function readString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function extractUpstreamError(payload) {
+  if (!payload || typeof payload !== "object") {
+    return "";
+  }
+
+  if (typeof payload.detail === "string" && payload.detail.trim()) {
+    return payload.detail.trim();
+  }
+
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message.trim();
+  }
+
+  if (payload.error && typeof payload.error === "object") {
+    if (typeof payload.error.message === "string" && payload.error.message.trim()) {
+      return payload.error.message.trim();
+    }
+
+    if (typeof payload.error.code === "string" && payload.error.code.trim()) {
+      return payload.error.code.trim();
+    }
+  }
+
+  if (typeof payload.error === "string" && payload.error.trim()) {
+    return payload.error.trim();
+  }
+
+  return "";
 }

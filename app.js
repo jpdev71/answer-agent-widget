@@ -561,7 +561,7 @@ async function fetchElevenLabsSignedUrl() {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok || typeof payload.signed_url !== "string" || !payload.signed_url.trim()) {
-    throw new Error(payload.error || `signed_url_request_failed_${response.status}`);
+    throw new Error(buildSignedUrlErrorMessage(response.status, payload));
   }
 
   return payload.signed_url.trim();
@@ -588,6 +588,35 @@ function renderElevenLabsRuntimeNotice(message) {
   notice.className = "elevenlabs-runtime-notice";
   notice.textContent = message;
   elevenLabsRuntime.append(notice);
+}
+
+function buildSignedUrlErrorMessage(status, payload) {
+  const primaryError =
+    typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : "";
+  const upstreamError =
+    typeof payload?.upstream_error === "string" && payload.upstream_error.trim()
+      ? payload.upstream_error.trim()
+      : "";
+  const upstreamStatus =
+    Number.isFinite(payload?.upstream_status) && payload.upstream_status > 0
+      ? payload.upstream_status
+      : null;
+
+  if (primaryError && upstreamError) {
+    return upstreamStatus
+      ? `${primaryError} (${upstreamStatus}: ${upstreamError})`
+      : `${primaryError} (${upstreamError})`;
+  }
+
+  if (primaryError) {
+    return primaryError;
+  }
+
+  if (upstreamError) {
+    return upstreamStatus ? `signed URL request failed (${upstreamStatus}: ${upstreamError})` : upstreamError;
+  }
+
+  return `signed_url_request_failed_${status}`;
 }
 
 async function finalizeAssistantTurn(response, options) {
