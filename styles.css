@@ -311,6 +311,20 @@ h1 {
   margin-top: 14px;
 }
 
+.elevenlabs-runtime {
+  margin-top: 14px;
+  min-height: 120px;
+}
+
+.elevenlabs-runtime.is-hidden {
+  display: none;
+}
+
+.elevenlabs-runtime elevenlabs-convai {
+  width: 100%;
+  display: block;
+}
+
 .message-list {
   padding: 18px;
   display: flex;

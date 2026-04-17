@@ -5,6 +5,9 @@ const state = {
   isVoiceReplyPlaying: false,
   recognition: null,
   activeSpeechUtterance: null,
+  elevenLabsWidgetScriptPromise: null,
+  elevenLabsWidgetReady: false,
+  elevenLabsWidgetMounted: false,
   conversationHistory: [],
   hasRenderedWelcome: false,
   lastAssistantReply: "",
@@ -95,6 +98,7 @@ const modeVoiceButton = document.querySelector("#mode-voice");
 const voicePanel = document.querySelector("#voice-panel");
 const voiceCopy = document.querySelector(".voice-copy");
 const voiceReplayButton = document.querySelector("#voice-replay");
+const elevenLabsRuntime = document.querySelector("#elevenlabs-runtime");
 
 updateVoicePreviewUi();
 
@@ -148,6 +152,11 @@ voiceToggle.addEventListener("click", async () => {
     return;
   }
 
+  if (isElevenLabsVoiceTransport()) {
+    await ensureElevenLabsRuntime();
+    return;
+  }
+
   state.isVoiceModeActive = !state.isVoiceModeActive;
   voiceToggle.classList.toggle("is-active", state.isVoiceModeActive);
   voiceToggle.textContent = state.isVoiceModeActive ? "Stop Voice" : "Start Voice";
@@ -194,6 +203,9 @@ function setMode(mode) {
   modeChatButton.setAttribute("aria-selected", String(!isVoice));
   modeVoiceButton.setAttribute("aria-selected", String(isVoice));
   voicePanel.classList.toggle("is-hidden", !isVoice);
+  if (isVoice && isElevenLabsVoiceTransport() && !state.elevenLabsWidgetMounted) {
+    void ensureElevenLabsRuntime();
+  }
   setStatus(isVoice ? "Voice tab selected." : "Chat tab selected.");
 }
 
@@ -347,6 +359,10 @@ function resetVoiceTransport() {
   stopSpeechPlayback();
 }
 
+function isElevenLabsVoiceTransport() {
+  return state.voicePreview.transport === "elevenlabs_widget";
+}
+
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -410,7 +426,8 @@ function normalizeVoicePreview(voicePreview) {
     enabled: Boolean(voicePreview?.enabled),
     currentFirmEnabled: Boolean(voicePreview?.current_firm_enabled),
     reason: typeof voicePreview?.reason === "string" ? voicePreview.reason : "flag_disabled",
-    transport: typeof voicePreview?.transport === "string" ? voicePreview.transport : "browser_native",
+    transport:
+      typeof voicePreview?.transport === "string" ? voicePreview.transport : "browser_native",
     utteranceMode:
       typeof voicePreview?.utterance_mode === "string"
         ? voicePreview.utterance_mode
@@ -442,6 +459,7 @@ function normalizeVoiceMeta(voiceMeta) {
 
 function updateVoicePreviewUi() {
   const isEnabled = state.voicePreview.enabled && state.voicePreview.currentFirmEnabled;
+  const usesElevenLabs = isEnabled && isElevenLabsVoiceTransport();
 
   modeVoiceButton.hidden = !isEnabled;
   modeVoiceButton.disabled = !isEnabled;
@@ -452,15 +470,112 @@ function updateVoicePreviewUi() {
 
   if (voiceCopy) {
     voiceCopy.textContent = isEnabled
-      ? "Voice preview is stable one-turn capture for now: tap once, speak once, hear Evie's reply, then tap again. True hands-free conversation will move to a dedicated voice runtime."
+      ? usesElevenLabs
+        ? "Voice preview is now running through ElevenLabs for turn-taking, speech, and playback while Evie keeps the same backend logic underneath."
+        : "Voice preview is stable one-turn capture for now: tap once, speak once, hear Evie's reply, then tap again. True hands-free conversation will move to a dedicated voice runtime."
       : "Voice preview is currently disabled for this firm. Chat remains the supported path while we compare transport behavior safely.";
   }
 
-  voiceToggle.disabled = !isEnabled;
-  voiceReplayButton.disabled = !isEnabled || !state.lastAssistantReply;
+  voiceToggle.hidden = usesElevenLabs;
+  voiceToggle.disabled = !isEnabled || usesElevenLabs;
+  voiceReplayButton.hidden = usesElevenLabs;
+  voiceReplayButton.disabled = !isEnabled || !state.lastAssistantReply || usesElevenLabs;
   voiceToggle.textContent = "Start Voice";
   voiceToggle.classList.remove("is-active");
+  elevenLabsRuntime.classList.toggle("is-hidden", !usesElevenLabs);
   voicePanel.classList.toggle("is-hidden", state.mode !== "voice" || !isEnabled);
+}
+
+async function ensureElevenLabsRuntime() {
+  if (!isElevenLabsVoiceTransport()) {
+    return;
+  }
+
+  if (state.elevenLabsWidgetMounted) {
+    setStatus("ElevenLabs voice runtime ready.");
+    return;
+  }
+
+  setStatus("Starting ElevenLabs voice runtime...");
+
+  try {
+    await loadElevenLabsWidgetScript();
+    const signedUrl = await fetchElevenLabsSignedUrl();
+    mountElevenLabsWidget(signedUrl);
+    state.elevenLabsWidgetMounted = true;
+    setStatus("ElevenLabs voice runtime ready.");
+  } catch (error) {
+    console.error("Failed to initialize ElevenLabs voice runtime", error);
+    setStatus(
+      `Voice runtime unavailable (${error instanceof Error ? error.message : "unknown_error"}).`,
+    );
+  }
+}
+
+function loadElevenLabsWidgetScript() {
+  if (state.elevenLabsWidgetReady) {
+    return Promise.resolve();
+  }
+
+  if (state.elevenLabsWidgetScriptPromise) {
+    return state.elevenLabsWidgetScriptPromise;
+  }
+
+  state.elevenLabsWidgetScriptPromise = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector('script[data-elevenlabs-widget="true"]');
+    if (existingScript) {
+      existingScript.addEventListener("load", () => {
+        state.elevenLabsWidgetReady = true;
+        resolve();
+      });
+      existingScript.addEventListener("error", () => {
+        reject(new Error("elevenlabs_widget_load_failed"));
+      });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
+    script.async = true;
+    script.type = "text/javascript";
+    script.dataset.elevenlabsWidget = "true";
+    script.addEventListener("load", () => {
+      state.elevenLabsWidgetReady = true;
+      resolve();
+    });
+    script.addEventListener("error", () => {
+      reject(new Error("elevenlabs_widget_load_failed"));
+    });
+    document.body.append(script);
+  });
+
+  return state.elevenLabsWidgetScriptPromise;
+}
+
+async function fetchElevenLabsSignedUrl() {
+  const response = await fetch("/api/elevenlabs/signed-url");
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || typeof payload.signed_url !== "string" || !payload.signed_url.trim()) {
+    throw new Error(payload.error || `signed_url_request_failed_${response.status}`);
+  }
+
+  return payload.signed_url.trim();
+}
+
+function mountElevenLabsWidget(signedUrl) {
+  elevenLabsRuntime.innerHTML = "";
+  const widget = document.createElement("elevenlabs-convai");
+  widget.setAttribute("signed-url", signedUrl);
+  widget.setAttribute("variant", "expanded");
+  widget.setAttribute("action-text", "Talk with Evie");
+  widget.setAttribute("start-call-text", "Start voice");
+  widget.setAttribute("end-call-text", "End voice");
+  widget.setAttribute("expand-text", "Open voice");
+  widget.setAttribute("listening-text", "Listening...");
+  widget.setAttribute("speaking-text", "Evie is speaking");
+  widget.setAttribute("markdown-link-allowed-hosts", "*");
+  elevenLabsRuntime.append(widget);
 }
 
 async function finalizeAssistantTurn(response, options) {

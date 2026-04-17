@@ -282,6 +282,9 @@ function getVoicePreviewConfig(firm) {
     process.env.EVIE_VOICE_PREVIEW_FIRM_IDS || "dermer-appel-ruder",
   );
   const currentFirmEnabled = globalEnabled && previewFirmIds.includes(firm.id);
+  const hasElevenLabsRuntime =
+    Boolean(readString(process.env.ELEVENLABS_API_KEY)) &&
+    Boolean(readString(process.env.ELEVENLABS_AGENT_ID));
 
   return {
     enabled: globalEnabled,
@@ -292,10 +295,10 @@ function getVoicePreviewConfig(firm) {
         : "firm_not_in_preview"
       : "flag_disabled",
     preview_firm_ids: previewFirmIds,
-    transport: "browser_native",
-    utterance_mode: "single_turn",
-    stt_provider: "browser_speech_recognition",
-    tts_provider: "browser_speech_synthesis",
+    transport: hasElevenLabsRuntime ? "elevenlabs_widget" : "browser_native",
+    utterance_mode: hasElevenLabsRuntime ? "managed_turn_taking" : "single_turn",
+    stt_provider: hasElevenLabsRuntime ? "elevenlabs" : "browser_speech_recognition",
+    tts_provider: hasElevenLabsRuntime ? "elevenlabs" : "browser_speech_synthesis",
   };
 }
 
