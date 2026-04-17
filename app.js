@@ -593,6 +593,8 @@ function renderElevenLabsRuntimeNotice(message) {
 function buildSignedUrlErrorMessage(status, payload) {
   const primaryError =
     typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : "";
+  const detail =
+    typeof payload?.detail === "string" && payload.detail.trim() ? payload.detail.trim() : "";
   const upstreamError =
     typeof payload?.upstream_error === "string" && payload.upstream_error.trim()
       ? payload.upstream_error.trim()
@@ -608,8 +610,16 @@ function buildSignedUrlErrorMessage(status, payload) {
       : `${primaryError} (${upstreamError})`;
   }
 
+  if (primaryError && detail) {
+    return `${primaryError} (${detail})`;
+  }
+
   if (primaryError) {
     return primaryError;
+  }
+
+  if (detail) {
+    return detail;
   }
 
   if (upstreamError) {
