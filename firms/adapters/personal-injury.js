@@ -1,5 +1,59 @@
 const { parseContact } = require("../../lib/contact-parser");
 
+const US_STATE_PATTERNS = [
+  { name: "Alabama", patterns: ["alabama", "al"] },
+  { name: "Alaska", patterns: ["alaska", "ak"] },
+  { name: "Arizona", patterns: ["arizona", "az"] },
+  { name: "Arkansas", patterns: ["arkansas", "ar"] },
+  { name: "California", patterns: ["california", "ca"] },
+  { name: "Colorado", patterns: ["colorado", "co"] },
+  { name: "Connecticut", patterns: ["connecticut", "ct"] },
+  { name: "Delaware", patterns: ["delaware", "de"] },
+  { name: "Florida", patterns: ["florida", "fl"] },
+  { name: "Georgia", patterns: ["georgia", "ga"] },
+  { name: "Hawaii", patterns: ["hawaii", "hi"] },
+  { name: "Idaho", patterns: ["idaho", "id"] },
+  { name: "Illinois", patterns: ["illinois", "il"] },
+  { name: "Indiana", patterns: ["indiana", "in"] },
+  { name: "Iowa", patterns: ["iowa", "ia"] },
+  { name: "Kansas", patterns: ["kansas", "ks"] },
+  { name: "Kentucky", patterns: ["kentucky", "ky"] },
+  { name: "Louisiana", patterns: ["louisiana", "la"] },
+  { name: "Maine", patterns: ["maine", "me"] },
+  { name: "Maryland", patterns: ["maryland", "md"] },
+  { name: "Massachusetts", patterns: ["massachusetts", "ma"] },
+  { name: "Michigan", patterns: ["michigan", "mi"] },
+  { name: "Minnesota", patterns: ["minnesota", "mn"] },
+  { name: "Mississippi", patterns: ["mississippi", "ms"] },
+  { name: "Missouri", patterns: ["missouri", "mo"] },
+  { name: "Montana", patterns: ["montana", "mt"] },
+  { name: "Nebraska", patterns: ["nebraska", "ne"] },
+  { name: "Nevada", patterns: ["nevada", "nv"] },
+  { name: "New Hampshire", patterns: ["new hampshire", "nh"] },
+  { name: "New Jersey", patterns: ["new jersey", "nj"] },
+  { name: "New Mexico", patterns: ["new mexico", "nm"] },
+  { name: "New York", patterns: ["new york", "ny"] },
+  { name: "North Carolina", patterns: ["north carolina", "nc"] },
+  { name: "North Dakota", patterns: ["north dakota", "nd"] },
+  { name: "Ohio", patterns: ["ohio", "oh"] },
+  { name: "Oklahoma", patterns: ["oklahoma", "ok"] },
+  { name: "Oregon", patterns: ["oregon", "or"] },
+  { name: "Pennsylvania", patterns: ["pennsylvania", "pa"] },
+  { name: "Rhode Island", patterns: ["rhode island", "ri"] },
+  { name: "South Carolina", patterns: ["south carolina", "sc"] },
+  { name: "South Dakota", patterns: ["south dakota", "sd"] },
+  { name: "Tennessee", patterns: ["tennessee", "tn"] },
+  { name: "Texas", patterns: ["texas", "tx"] },
+  { name: "Utah", patterns: ["utah", "ut"] },
+  { name: "Vermont", patterns: ["vermont", "vt"] },
+  { name: "Virginia", patterns: ["virginia", "va"] },
+  { name: "Washington", patterns: ["washington", "wa"] },
+  { name: "West Virginia", patterns: ["west virginia", "wv"] },
+  { name: "Wisconsin", patterns: ["wisconsin", "wi"] },
+  { name: "Wyoming", patterns: ["wyoming", "wy"] },
+  { name: "District of Columbia", patterns: ["district of columbia", "washington dc", "dc"] },
+];
+
 function createLead({ transcript, channel, firm }) {
   const userText = transcript
     .filter((entry) => entry.role === "user")
@@ -109,18 +163,11 @@ function detectQualification(input) {
 }
 
 function detectState(lower, firm) {
-  const knownStates = [
-    "Georgia",
-    "Florida",
-    "Alabama",
-    "South Carolina",
-    "North Carolina",
-    "Tennessee",
-  ];
-
-  for (const state of knownStates) {
-    if (lower.includes(state.toLowerCase())) {
-      return state;
+  for (const state of US_STATE_PATTERNS) {
+    for (const pattern of state.patterns) {
+      if (new RegExp(`\\b${escapeRegex(pattern)}\\b`, "i").test(lower)) {
+        return state.name;
+      }
     }
   }
 
@@ -132,6 +179,10 @@ function detectState(lower, firm) {
   }
 
   return "";
+}
+
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function detectCity(text, firm) {
