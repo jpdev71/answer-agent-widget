@@ -74,6 +74,32 @@ Optional request fields sent by the widget:
 }
 ```
 
+## Regression harness
+
+The repo now includes a small live-preview regression runner so behavior changes can be checked against a stable matrix instead of only ad hoc manual tests.
+
+Files:
+
+- `docs/evie-behavior-contract.md`
+- `qa/evie-regression-cases.json`
+- `scripts/run-evie-regression.js`
+
+Example:
+
+```bash
+node scripts/run-evie-regression.js --base-url https://your-preview.vercel.app
+```
+
+Optional for protected previews:
+
+```bash
+node scripts/run-evie-regression.js \
+  --base-url https://your-preview.vercel.app \
+  --bypass-token YOUR_VERCEL_AUTOMATION_BYPASS_TOKEN
+```
+
+The runner exits non-zero when one or more cases fail and prints a JSON summary with pass/fail details.
+
 ## Lead webhook delivery
 
 If `LEAD_WEBHOOK_URL` is set, the backend will send a webhook when:
