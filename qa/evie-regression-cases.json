@@ -78,7 +78,7 @@
   {
     "id": "spoken_email_capture_once",
     "category": "voice_parser",
-    "message": "billjoe at g dot com",
+    "message": "billjoe at gmail dot com",
     "conversation_history": [
       {
         "role": "user",
@@ -94,7 +94,7 @@
         "share your email address",
         "best email address"
       ],
-      "lead_email_matches": "^billjoe@g\\.com$"
+      "lead_email_matches": "^billjoe@gmail\\.com$"
     }
   },
   {
@@ -112,7 +112,7 @@
       },
       {
         "role": "user",
-        "content": "billjoe at g dot com"
+        "content": "billjoe at gmail dot com"
       },
       {
         "role": "assistant",
@@ -124,7 +124,7 @@
         "share your email address",
         "best email address"
       ],
-      "lead_email_matches": "^billjoe@g\\.com$"
+      "lead_email_matches": "^billjoe@gmail\\.com$"
     }
   }
 ]
