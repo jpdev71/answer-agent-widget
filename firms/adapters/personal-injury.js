@@ -1,57 +1,57 @@
 const { parseContact } = require("../../lib/contact-parser");
 
 const US_STATE_PATTERNS = [
-  { name: "Alabama", patterns: ["alabama", "al"] },
-  { name: "Alaska", patterns: ["alaska", "ak"] },
-  { name: "Arizona", patterns: ["arizona", "az"] },
-  { name: "Arkansas", patterns: ["arkansas", "ar"] },
-  { name: "California", patterns: ["california", "ca"] },
-  { name: "Colorado", patterns: ["colorado", "co"] },
-  { name: "Connecticut", patterns: ["connecticut", "ct"] },
-  { name: "Delaware", patterns: ["delaware", "de"] },
-  { name: "Florida", patterns: ["florida", "fl"] },
-  { name: "Georgia", patterns: ["georgia", "ga"] },
-  { name: "Hawaii", patterns: ["hawaii", "hi"] },
-  { name: "Idaho", patterns: ["idaho", "id"] },
-  { name: "Illinois", patterns: ["illinois", "il"] },
-  { name: "Indiana", patterns: ["indiana", "in"] },
-  { name: "Iowa", patterns: ["iowa", "ia"] },
-  { name: "Kansas", patterns: ["kansas", "ks"] },
-  { name: "Kentucky", patterns: ["kentucky", "ky"] },
-  { name: "Louisiana", patterns: ["louisiana", "la"] },
-  { name: "Maine", patterns: ["maine", "me"] },
-  { name: "Maryland", patterns: ["maryland", "md"] },
-  { name: "Massachusetts", patterns: ["massachusetts", "ma"] },
-  { name: "Michigan", patterns: ["michigan", "mi"] },
-  { name: "Minnesota", patterns: ["minnesota", "mn"] },
-  { name: "Mississippi", patterns: ["mississippi", "ms"] },
-  { name: "Missouri", patterns: ["missouri", "mo"] },
-  { name: "Montana", patterns: ["montana", "mt"] },
-  { name: "Nebraska", patterns: ["nebraska", "ne"] },
-  { name: "Nevada", patterns: ["nevada", "nv"] },
-  { name: "New Hampshire", patterns: ["new hampshire", "nh"] },
-  { name: "New Jersey", patterns: ["new jersey", "nj"] },
-  { name: "New Mexico", patterns: ["new mexico", "nm"] },
-  { name: "New York", patterns: ["new york", "ny"] },
-  { name: "North Carolina", patterns: ["north carolina", "nc"] },
-  { name: "North Dakota", patterns: ["north dakota", "nd"] },
-  { name: "Ohio", patterns: ["ohio", "oh"] },
-  { name: "Oklahoma", patterns: ["oklahoma", "ok"] },
-  { name: "Oregon", patterns: ["oregon", "or"] },
-  { name: "Pennsylvania", patterns: ["pennsylvania", "pa"] },
-  { name: "Rhode Island", patterns: ["rhode island", "ri"] },
-  { name: "South Carolina", patterns: ["south carolina", "sc"] },
-  { name: "South Dakota", patterns: ["south dakota", "sd"] },
-  { name: "Tennessee", patterns: ["tennessee", "tn"] },
-  { name: "Texas", patterns: ["texas", "tx"] },
-  { name: "Utah", patterns: ["utah", "ut"] },
-  { name: "Vermont", patterns: ["vermont", "vt"] },
-  { name: "Virginia", patterns: ["virginia", "va"] },
-  { name: "Washington", patterns: ["washington", "wa"] },
-  { name: "West Virginia", patterns: ["west virginia", "wv"] },
-  { name: "Wisconsin", patterns: ["wisconsin", "wi"] },
-  { name: "Wyoming", patterns: ["wyoming", "wy"] },
-  { name: "District of Columbia", patterns: ["district of columbia", "washington dc", "dc"] },
+  { name: "Alabama", patterns: ["alabama"], abbreviations: ["al"] },
+  { name: "Alaska", patterns: ["alaska"], abbreviations: ["ak"] },
+  { name: "Arizona", patterns: ["arizona"], abbreviations: ["az"] },
+  { name: "Arkansas", patterns: ["arkansas"], abbreviations: [] },
+  { name: "California", patterns: ["california"], abbreviations: ["ca"] },
+  { name: "Colorado", patterns: ["colorado"], abbreviations: ["co"] },
+  { name: "Connecticut", patterns: ["connecticut"], abbreviations: ["ct"] },
+  { name: "Delaware", patterns: ["delaware"], abbreviations: [] },
+  { name: "Florida", patterns: ["florida"], abbreviations: ["fl"] },
+  { name: "Georgia", patterns: ["georgia"], abbreviations: ["ga"] },
+  { name: "Hawaii", patterns: ["hawaii"], abbreviations: [] },
+  { name: "Idaho", patterns: ["idaho"], abbreviations: ["id"] },
+  { name: "Illinois", patterns: ["illinois"], abbreviations: ["il"] },
+  { name: "Indiana", patterns: ["indiana"], abbreviations: [] },
+  { name: "Iowa", patterns: ["iowa"], abbreviations: ["ia"] },
+  { name: "Kansas", patterns: ["kansas"], abbreviations: ["ks"] },
+  { name: "Kentucky", patterns: ["kentucky"], abbreviations: ["ky"] },
+  { name: "Louisiana", patterns: ["louisiana"], abbreviations: [] },
+  { name: "Maine", patterns: ["maine"], abbreviations: [] },
+  { name: "Maryland", patterns: ["maryland"], abbreviations: ["md"] },
+  { name: "Massachusetts", patterns: ["massachusetts"], abbreviations: ["ma"] },
+  { name: "Michigan", patterns: ["michigan"], abbreviations: ["mi"] },
+  { name: "Minnesota", patterns: ["minnesota"], abbreviations: ["mn"] },
+  { name: "Mississippi", patterns: ["mississippi"], abbreviations: ["ms"] },
+  { name: "Missouri", patterns: ["missouri"], abbreviations: ["mo"] },
+  { name: "Montana", patterns: ["montana"], abbreviations: ["mt"] },
+  { name: "Nebraska", patterns: ["nebraska"], abbreviations: ["ne"] },
+  { name: "Nevada", patterns: ["nevada"], abbreviations: ["nv"] },
+  { name: "New Hampshire", patterns: ["new hampshire"], abbreviations: ["nh"] },
+  { name: "New Jersey", patterns: ["new jersey"], abbreviations: ["nj"] },
+  { name: "New Mexico", patterns: ["new mexico"], abbreviations: ["nm"] },
+  { name: "New York", patterns: ["new york"], abbreviations: ["ny"] },
+  { name: "North Carolina", patterns: ["north carolina"], abbreviations: ["nc"] },
+  { name: "North Dakota", patterns: ["north dakota"], abbreviations: ["nd"] },
+  { name: "Ohio", patterns: ["ohio"], abbreviations: ["oh"] },
+  { name: "Oklahoma", patterns: ["oklahoma"], abbreviations: [] },
+  { name: "Oregon", patterns: ["oregon"], abbreviations: [] },
+  { name: "Pennsylvania", patterns: ["pennsylvania"], abbreviations: ["pa"] },
+  { name: "Rhode Island", patterns: ["rhode island"], abbreviations: ["ri"] },
+  { name: "South Carolina", patterns: ["south carolina"], abbreviations: ["sc"] },
+  { name: "South Dakota", patterns: ["south dakota"], abbreviations: ["sd"] },
+  { name: "Tennessee", patterns: ["tennessee"], abbreviations: ["tn"] },
+  { name: "Texas", patterns: ["texas"], abbreviations: ["tx"] },
+  { name: "Utah", patterns: ["utah"], abbreviations: ["ut"] },
+  { name: "Vermont", patterns: ["vermont"], abbreviations: ["vt"] },
+  { name: "Virginia", patterns: ["virginia"], abbreviations: ["va"] },
+  { name: "Washington", patterns: ["washington"], abbreviations: ["wa"] },
+  { name: "West Virginia", patterns: ["west virginia"], abbreviations: ["wv"] },
+  { name: "Wisconsin", patterns: ["wisconsin"], abbreviations: ["wi"] },
+  { name: "Wyoming", patterns: ["wyoming"], abbreviations: ["wy"] },
+  { name: "District of Columbia", patterns: ["district of columbia", "washington dc"], abbreviations: ["dc"] },
 ];
 
 function createLead({ transcript, channel, firm }) {
@@ -164,8 +164,16 @@ function detectQualification(input) {
 
 function detectState(lower, firm) {
   for (const state of US_STATE_PATTERNS) {
-    for (const pattern of state.patterns) {
+    for (const pattern of state.patterns || []) {
       if (new RegExp(`\\b${escapeRegex(pattern)}\\b`, "i").test(lower)) {
+        return state.name;
+      }
+    }
+
+    for (const abbreviation of state.abbreviations || []) {
+      const safeAbbreviationPattern =
+        `(?:\\b(?:in|at|near|around|from|outside|inside|state of)\\s+${escapeRegex(abbreviation)}\\b)|(?:\\b${escapeRegex(abbreviation)}\\b\\s*(?:accident|crash|collision|incident|state))`;
+      if (new RegExp(safeAbbreviationPattern, "i").test(lower)) {
         return state.name;
       }
     }
